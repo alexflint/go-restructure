@@ -13,11 +13,11 @@ This package allows you to express regular expressions by defining a struct, and
 import "github.com/alexflint/go-restructure"
 
 type EmailAddress struct {
-	_    struct{} `^`
-	User string   `\w+`
-	_    struct{} `@`
-	Host string   `[^@]+`
-	_    struct{} `$`
+	_    string `^`
+	User string `\w+`
+	_    string `@`
+	Host string `[^@]+`
+	_    string `$`
 }
 
 func main() {
