@@ -19,8 +19,8 @@ const (
 
 // Options represents optional parameters for compilation
 type Options struct {
-	Style       Style        // If false then opts.Syntax will be set to perl mode
-	SyntaxFlags syntax.Flags // Syntax contains flags that control
+	Style       Style // Style can be set to Perl, POSIX, or CustomStyle
+	SyntaxFlags syntax.Flags
 }
 
 type region struct {
