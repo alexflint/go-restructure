@@ -19,6 +19,10 @@ type Field struct {
 	child   *Struct // descendant struct; nil for terminals
 }
 
+func isExported(f reflect.StructField) bool {
+	return f.PkgPath == ""
+}
+
 // A builder builds stencils from structs using reflection
 type builder struct {
 	numCaptures int
@@ -37,7 +41,7 @@ func (b *builder) nextCaptureIndex() int {
 func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
 	pattern := string(f.Tag)
 	if pattern == "" {
-		return nil, nil, fmt.Errorf("%s is missing tag", fullName)
+		return nil, nil, nil
 	}
 
 	// TODO: check for sub-captures within expr and remove them
@@ -46,12 +50,15 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 		return nil, nil, fmt.Errorf(`%s: %v (pattern was "%s")`, fullName, err, f.Tag)
 	}
 
-	captureIndex := b.nextCaptureIndex()
-	expr = &syntax.Regexp{
-		Op:   syntax.OpCapture,
-		Sub:  []*syntax.Regexp{expr},
-		Name: f.Name,
-		Cap:  captureIndex,
+	captureIndex := -1
+	if isExported(f) {
+		captureIndex = b.nextCaptureIndex()
+		expr = &syntax.Regexp{
+			Op:   syntax.OpCapture,
+			Sub:  []*syntax.Regexp{expr},
+			Name: f.Name,
+			Cap:  captureIndex,
+		}
 	}
 	field := &Field{
 		index:   f.Index,
@@ -109,6 +116,9 @@ func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
 		t = t.Elem()
 	}
 
+	// Select a capture index first so that the struct comes before its fields
+	captureIndex := b.nextCaptureIndex()
+
 	var exprs []*syntax.Regexp
 	var fields []*Field
 	for i := 0; i < t.NumField(); i++ {
@@ -128,7 +138,6 @@ func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
 	}
 
 	// Wrap in a capture
-	captureIndex := b.nextCaptureIndex()
 	expr = &syntax.Regexp{
 		Sub: []*syntax.Regexp{expr},
 		Op:  syntax.OpCapture,

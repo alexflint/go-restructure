@@ -1,11 +1,11 @@
 package restructure
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 
 	"github.com/alexflint/go-restructure/regex"
+	"github.com/kr/pretty"
 )
 
 var (
@@ -67,9 +67,8 @@ func (r *Regexp) Match(dest interface{}, s string) bool {
 
 	// Inflate matches into original struct
 	match := matchFromIndices(indices, input)
-	// for i, region := range match.captures {
-	// 	log.Printf("  %d: %d...%d", i, region.begin, region.end)
-	// }
+	pretty.Println("Indices:", indices)
+	pretty.Println("Match:", match)
 
 	err := inflateStruct(v, match, r.st)
 	if err != nil {
@@ -90,6 +89,9 @@ func CompileType(t reflect.Type) (*Regexp, error) {
 		return nil, err
 	}
 
+	pretty.Println("Struct:", st)
+	fmt.Println("Expr:", expr.String())
+
 	// Compile regular expression
 	re, err := regex.CompileSyntax(expr)
 	if err != nil {
@@ -102,12 +104,4 @@ func CompileType(t reflect.Type) (*Regexp, error) {
 		re: re,
 		t:  t,
 	}, nil
-}
-
-func prettyPrint(x interface{}) string {
-	buf, err := json.MarshalIndent(x, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return string(buf)
 }

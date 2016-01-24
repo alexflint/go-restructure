@@ -31,13 +31,19 @@ func ensureAlloc(dest reflect.Value) reflect.Value {
 
 // inflate the results of a match into a string
 func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
+	if captureIndex == -1 {
+		// This means the field generated a regex but we did not want the results
+		return nil
+	}
 	region := match.captures[captureIndex]
 	if !region.wasMatched() {
+		// This means the region was optional and was not matched
 		return nil
 	}
 
-	dest = ensureAlloc(dest)
 	buf := match.input[region.begin:region.end]
+
+	dest = ensureAlloc(dest)
 	switch dest.Type() {
 	case stringType:
 		dest.SetString(string(buf))
