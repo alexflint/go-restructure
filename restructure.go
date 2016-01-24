@@ -6,12 +6,21 @@ import (
 	"regexp/syntax"
 
 	"github.com/alexflint/go-restructure/regex"
-	"github.com/kr/pretty"
+)
+
+// Style determines whether we are in Perl or POSIX or custom mode
+type Style int
+
+const (
+	Perl Style = iota
+	POSIX
+	CustomStyle
 )
 
 // Options represents optional parameters for compilation
 type Options struct {
-	Syntax syntax.Flags // Syntax contains flags that control
+	Style       Style        // If false then opts.Syntax will be set to perl mode
+	SyntaxFlags syntax.Flags // Syntax contains flags that control
 }
 
 type region struct {
@@ -71,8 +80,6 @@ func (r *Regexp) Find(dest interface{}, s string) bool {
 
 	// Inflate matches into original struct
 	match := matchFromIndices(indices, input)
-	pretty.Println("Indices:", indices)
-	pretty.Println("Match:", match)
 
 	err := inflateStruct(v, match, r.st)
 	if err != nil {
@@ -94,9 +101,15 @@ func Compile(proto interface{}, opts Options) (*Regexp, error) {
 
 // CompileType is like Compile but takes a reflect.Type instead.
 func CompileType(t reflect.Type, opts Options) (*Regexp, error) {
-	if opts.Syntax == 0 {
-		opts.Syntax = syntax.Perl
+	// We do this so that the zero value for Options gives us Perl mode,
+	// which is also the default used by the standard library regexp package
+	switch opts.Style {
+	case Perl:
+		opts.SyntaxFlags = syntax.Perl
+	case POSIX:
+		opts.SyntaxFlags = syntax.POSIX
 	}
+
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}

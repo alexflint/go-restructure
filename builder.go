@@ -48,7 +48,7 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 	}
 
 	// TODO: check for sub-captures within expr and remove them
-	expr, err := syntax.Parse(pattern, b.opts.Syntax)
+	expr, err := syntax.Parse(pattern, b.opts.SyntaxFlags)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`%s: %v (pattern was "%s")`, fullName, err, f.Tag)
 	}
