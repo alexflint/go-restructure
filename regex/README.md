@@ -1,0 +1,1 @@
+This directory contains a slightly modified version of the Go 1.5.2 standard library `regexp` package.

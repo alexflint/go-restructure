@@ -3,21 +3,16 @@ package restructure
 import (
 	"fmt"
 	"reflect"
+	"regexp/syntax"
 
 	"github.com/alexflint/go-restructure/regex"
 	"github.com/kr/pretty"
 )
 
-var (
-	emptyType     = reflect.TypeOf(struct{}{})
-	stringType    = reflect.TypeOf("")
-	byteArrayType = reflect.TypeOf([]byte{})
-	scalarTypes   = []reflect.Type{
-		emptyType,
-		stringType,
-		byteArrayType,
-	}
-)
+// Options represents optional parameters for compilation
+type Options struct {
+	Syntax syntax.Flags // Syntax contains flags that control
+}
 
 type region struct {
 	begin, end int
@@ -42,13 +37,22 @@ func matchFromIndices(indices []int, input []byte) *match {
 	return match
 }
 
+// Regexp is a regular expression that captures submatches into struct fields.
 type Regexp struct {
-	st *Struct
-	re *regex.Regexp
-	t  reflect.Type
+	st   *Struct
+	re   *regex.Regexp
+	t    reflect.Type
+	opts Options
 }
 
-func (r *Regexp) Match(dest interface{}, s string) bool {
+// Find attempts to match the regular expression against the input string. It
+// returns true if there was a match, and also populates the fields of the provided
+// struct with the contents of each submatch.
+
+// Find attempts to match the regular expression against the input string. It
+// returns true if there was a match, and also populates the fields of the provided
+// struct with the contents of each submatch.
+func (r *Regexp) Find(dest interface{}, s string) bool {
 	v := reflect.ValueOf(dest)
 	input := []byte(s)
 
@@ -77,20 +81,32 @@ func (r *Regexp) Match(dest interface{}, s string) bool {
 	return true
 }
 
-func Compile(proto interface{}) (*Regexp, error) {
-	return CompileType(reflect.TypeOf(proto))
+// String returns a string representation of the regular expression
+func (r *Regexp) String() string {
+	return r.re.String()
 }
 
-func CompileType(t reflect.Type) (*Regexp, error) {
+// Compile constructs a regular expression from the struct fields on the
+// provided struct.
+func Compile(proto interface{}, opts Options) (*Regexp, error) {
+	return CompileType(reflect.TypeOf(proto), opts)
+}
+
+// CompileType is like Compile but takes a reflect.Type instead.
+func CompileType(t reflect.Type, opts Options) (*Regexp, error) {
+	if opts.Syntax == 0 {
+		opts.Syntax = syntax.Perl
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
 	// Traverse the struct
-	b := newBuilder()
+	b := newBuilder(opts)
 	st, expr, err := b.structure(t)
 	if err != nil {
 		return nil, err
 	}
-
-	pretty.Println("Struct:", st)
-	fmt.Println("Expr:", expr.String())
 
 	// Compile regular expression
 	re, err := regex.CompileSyntax(expr)
@@ -100,8 +116,39 @@ func CompileType(t reflect.Type) (*Regexp, error) {
 
 	// Return
 	return &Regexp{
-		st: st,
-		re: re,
-		t:  t,
+		st:   st,
+		re:   re,
+		t:    t,
+		opts: opts,
 	}, nil
+}
+
+// MustCompile is like Compile but panics if there is a compilation error
+func MustCompile(proto interface{}, opts Options) *Regexp {
+	re, err := Compile(proto, opts)
+	if err != nil {
+		panic(err)
+	}
+	return re
+}
+
+// MustCompileType is like CompileType but panics if there is a compilation error
+func MustCompileType(t reflect.Type, opts Options) *Regexp {
+	re, err := CompileType(t, opts)
+	if err != nil {
+		panic(err)
+	}
+	return re
+}
+
+// Find constructs a regular expression from the given struct and executes it on the
+// given string, placing submatches into the fields of the struct. The first parameter
+// must be a non-nil struct pointer. It returns true if the match succeeded. The only
+// errors that are returned are compilation errors.
+func Find(dest interface{}, s string) (bool, error) {
+	re, err := Compile(dest, Options{})
+	if err != nil {
+		return false, err
+	}
+	return re.Find(dest, s), nil
 }

@@ -15,13 +15,13 @@ type DotName struct {
 
 type DotExpr struct {
 	_    struct{} `^`
-	Head string   `foo`
+	Head string   `\w+`
 	Tail *DotName `?`
 	_    struct{} `$`
 }
 
 func TestMatchNameDotName(t *testing.T) {
-	pattern, err := Compile(DotExpr{})
+	pattern, err := Compile(DotExpr{}, restructure.Options{})
 	require.NoError(t, err)
 
 	var v DotExpr
@@ -32,20 +32,59 @@ func TestMatchNameDotName(t *testing.T) {
 	assert.Equal(t, "bar", v.Tail.Name)
 }
 
+func TestMatchNameDotNameHeadOnly(t *testing.T) {
+	pattern, err := Compile(DotExpr{}, restructure.Options{})
+	require.NoError(t, err)
+
+	var v DotExpr
+	assert.True(t, pattern.Match(&v, "head"))
+	assert.Equal(t, "head", v.Head)
+	assert.Nil(t, v.Tail)
+}
+
+func TestMatchNameDotNameFails(t *testing.T) {
+	pattern, err := Compile(DotExpr{}, restructure.Options{})
+	require.NoError(t, err)
+
+	var v DotExpr
+	assert.False(t, pattern.Match(&v, ".oops"))
+}
+
 type URL struct {
 	_      string `^`
-	Scheme string `[a-z]+`
+	Scheme string `[[:alpha:]]+`
 	_      string `://`
-	Host   string `[a-z]+`
+	Host   string `[[:alnum:]]+`
+	_      string `\?`
+	Query  string `.*`
 	_      string `$`
 }
 
 func TestMatchURL(t *testing.T) {
-	pattern, err := Compile(URL{})
+	pattern, err := Compile(URL{}, restructure.Options{})
 	require.NoError(t, err)
 
 	var v URL
-	assert.True(t, pattern.Match(&v, "http://foo"))
+	assert.True(t, pattern.Match(&v, "http://example.com"))
+	assert.Equal(t, "http", v.Scheme)
+	assert.Equal(t, "foo", v.Host)
+}
+
+type PtrURL struct {
+	_      struct{} `^`
+	Scheme *string  `[[:alpha:]]+`
+	_      struct{} `://`
+	Host   *string  `[[:alnum:]]\w*`
+	_      struct{} `$`
+}
+
+func TestMatchPtrURL(t *testing.T) {
+	pattern, err := Compile(URL{}, restructure.Options{})
+	require.NoError(t, err)
+
+	var v PtrURL
+	assert.True(t, pattern.Match(&v, "http://example.com"))
+	assert.NotNil(t, pattern)
 	assert.Equal(t, "http", v.Scheme)
 	assert.Equal(t, "foo", v.Host)
 }

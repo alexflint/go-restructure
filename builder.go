@@ -26,10 +26,13 @@ func isExported(f reflect.StructField) bool {
 // A builder builds stencils from structs using reflection
 type builder struct {
 	numCaptures int
+	opts        Options
 }
 
-func newBuilder() *builder {
-	return &builder{}
+func newBuilder(opts Options) *builder {
+	return &builder{
+		opts: opts,
+	}
 }
 
 func (b *builder) nextCaptureIndex() int {
@@ -45,7 +48,7 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 	}
 
 	// TODO: check for sub-captures within expr and remove them
-	expr, err := syntax.Parse(pattern, syntax.Perl)
+	expr, err := syntax.Parse(pattern, b.opts.Syntax)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`%s: %v (pattern was "%s")`, fullName, err, f.Tag)
 	}
@@ -84,6 +87,8 @@ func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *
 			Sub: []*syntax.Regexp{expr},
 			Op:  syntax.OpQuest,
 		}
+	case "":
+		// nothing to do
 	default:
 		return nil, nil, fmt.Errorf("invalid op \"%s\" for non-slice field on %s", opstr, fullName)
 	}

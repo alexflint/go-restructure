@@ -5,6 +5,17 @@ import (
 	"reflect"
 )
 
+var (
+	emptyType     = reflect.TypeOf(struct{}{})
+	stringType    = reflect.TypeOf("")
+	byteArrayType = reflect.TypeOf([]byte{})
+	scalarTypes   = []reflect.Type{
+		emptyType,
+		stringType,
+		byteArrayType,
+	}
+)
+
 // determines whether t is a scalar type or a pointer to a scalar type
 func isScalar(t reflect.Type) bool {
 	if t.Kind() == reflect.Ptr {
