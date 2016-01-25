@@ -13,11 +13,11 @@ This package allows you to express regular expressions by defining a struct, and
 import "github.com/alexflint/go-restructure"
 
 type EmailAddress struct {
-	_    string `^`
-	User string `\w+`
-	_    string `@`
-	Host string `[^@]+`
-	_    string `$`
+	_    string `regex:"^"`
+	User string `regex:"\\w+"`
+	_    string `regex:"@"`
+	Host string `regex:"[^@]+"`
+	_    string `regex:"$"`
 }
 
 func main() {
@@ -41,17 +41,17 @@ Here is a slightly more sophisticated email address parser that uses nested stru
 import "github.com/alexflint/go-restructure"
 
 type Hostname struct {
-	Domain string   `\w+`
-	_      struct{} `\.`
-	TLD    string   `\w+`
+	Domain string   `regex:"\\w+"`
+	_      struct{} `regex:"\\."`
+	TLD    string   `regex:"\\w+"`
 }
 
 type EmailAddress struct {
-	_    struct{} `^`
-	User string   `[a-zA-Z0-9._%+-]+`
-	_    struct{} `@`
+	_    struct{} `regex:"^"`
+	User string   `regex:"[a-zA-Z0-9._%+-]+"`
+	_    struct{} `regex:"@"`
 	Host *Hostname
-	_    struct{} `$`
+	_    struct{} `regex:"$"`
 }
 
 func main() {
