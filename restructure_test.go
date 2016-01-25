@@ -1,6 +1,7 @@
 package restructure
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,15 +9,15 @@ import (
 )
 
 type DotName struct {
-	Dot  string `\.`
-	Name string `\w+`
+	Dot  string `regex:"\\."`
+	Name string `regex:"\\w+"`
 }
 
 type DotExpr struct {
-	_    struct{} `^`
-	Head string   `\w+`
-	Tail *DotName `?`
-	_    struct{} `$`
+	_    struct{} `regex:"^"`
+	Head string   `regex:"\\w+"`
+	Tail *DotName `regex:"?"`
+	_    struct{} `regex:"$"`
 }
 
 func TestMatchNameDotName(t *testing.T) {
@@ -50,11 +51,11 @@ func TestMatchNameDotNameFails(t *testing.T) {
 }
 
 type URL struct {
-	_      string `^`
-	Scheme string `[[:alpha:]]+`
-	_      string `://`
-	Host   string `.*`
-	_      string `$`
+	_      string `regex:"^"`
+	Scheme string `regex:"[[:alpha:]]+" json:"scheme"`
+	_      string `regex:"://"`
+	Host   string `regex:".*" json:"host"`
+	_      string `regex:"$"`
 }
 
 func TestMatchURL(t *testing.T) {
@@ -67,12 +68,25 @@ func TestMatchURL(t *testing.T) {
 	assert.Equal(t, "example.com", v.Host)
 }
 
+func TestCombinationWithJSONTags(t *testing.T) {
+	pattern, err := Compile(URL{}, Options{})
+	require.NoError(t, err)
+
+	var v URL
+	require.True(t, pattern.Find(&v, "http://example.com"))
+
+	js, err := json.Marshal(&v)
+	require.NoError(t, err)
+
+	assert.Equal(t, "{\"scheme\":\"http\",\"host\":\"example.com\"}", string(js))
+}
+
 type PtrURL struct {
-	_      struct{} `^`
-	Scheme *string  `[[:alpha:]]+`
-	_      struct{} `://`
-	Host   *string  `.*`
-	_      struct{} `$`
+	_      struct{} `regex:"^"`
+	Scheme *string  `regex:"[[:alpha:]]+"`
+	_      struct{} `regex:"://"`
+	Host   *string  `regex:".*"`
+	_      struct{} `regex:"$"`
 }
 
 func TestMatchPtrURL(t *testing.T) {
