@@ -27,6 +27,8 @@ func main() {
 	fmt.Println(addr.Host) // prints "example.com"
 }
 ```
+(Note that the above is far too simplistic to be used as a serious email address validator.)
+
 The regular expression that was executed was the concatenation of the struct tags:
 
 ```
