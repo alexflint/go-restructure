@@ -14,9 +14,9 @@ import "github.com/alexflint/go-restructure"
 
 type EmailAddress struct {
 	_    struct{} `^`
-	User string `\w+`
+	User string   `\w+`
 	_    struct{} `@`
-	Host string `[^@]+`
+	Host string   `[^@]+`
 	_    struct{} `$`
 }
 
