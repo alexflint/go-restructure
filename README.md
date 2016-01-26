@@ -27,6 +27,7 @@ func main() {
 	fmt.Println(addr.Host) // prints "example.com"
 }
 ```
+(Note that the above is far too simplistic to be used as a serious email address validator.)
 
 The regular expression that was executed was the concatenation of the struct tags:
 
@@ -47,6 +48,8 @@ type EmailAddress struct {
 	_    string `regexp:"$"`
 }
 ```
+
+### Nested Structs
 
 Here is a slightly more sophisticated email address parser that uses nested structs:
 
