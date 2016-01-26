@@ -13,11 +13,11 @@ This package allows you to express regular expressions by defining a struct, and
 import "github.com/alexflint/go-restructure"
 
 type EmailAddress struct {
-	_    string `regexp:"^"`
-	User string `regexp:"\\w+"`
-	_    string `regexp:"@"`
-	Host string `regexp:"[^@]+"`
-	_    string `regexp:"$"`
+	_    string `^`
+	User string `\w+`
+	_    string `@`
+	Host string `[^@]+`
+	_    string `$`
 }
 
 func main() {
@@ -27,7 +27,6 @@ func main() {
 	fmt.Println(addr.Host) // prints "example.com"
 }
 ```
-(Note that the above is far too simplistic to be used as a serious email address validator.)
 
 The regular expression that was executed was the concatenation of the struct tags:
 
@@ -37,23 +36,35 @@ The regular expression that was executed was the concatenation of the struct tag
 
 The first submatch was inserted into the `User` field and the second into the `Host` field.
 
+You may also use the `regexp:` tag key, but keep in mind that you must escape quotes and backslashes:
+
+```go
+type EmailAddress struct {
+	_    string `regexp:"^"`
+	User string `regexp:"\\w+"`
+	_    string `regexp:"@"`
+	Host string `regexp:"[^@]+"`
+	_    string `regexp:"$"`
+}
+```
+
 Here is a slightly more sophisticated email address parser that uses nested structs:
 
 ```go
 import "github.com/alexflint/go-restructure"
 
 type Hostname struct {
-	Domain string   `regexp:"\\w+"`
-	_      struct{} `regexp:"\\."`
-	TLD    string   `regexp:"\\w+"`
+	Domain string   `\w+`
+	_      struct{} `\.`
+	TLD    string   `\w+`
 }
 
 type EmailAddress struct {
-	_    struct{} `regexp:"^"`
-	User string   `regexp:"[a-zA-Z0-9._%+-]+"`
-	_    struct{} `regexp:"@"`
+	_    struct{} `^`
+	User string   `[a-zA-Z0-9._%+-]+`
+	_    struct{} `@`
 	Host *Hostname
-	_    struct{} `regexp:"$"`
+	_    struct{} `$`
 }
 
 func main() {
@@ -67,17 +78,7 @@ func main() {
 }
 ```
 
-If adding backslashes to escape your regular expressions become too tedious then you may omit the `regexp:` tag, but beware that this will make it impossible to add tags for other libraries to the same struct:
-
-```
-type Hostname struct {
-	Domain string   `\\w+`
-	_      struct{} `\\.`
-	TLD    string   `\\w+`
-}
-```
-
-Compare this to using the standard library `FindStringSubmatchIndex` directly:
+Compare this to using the standard library `regexp.FindStringSubmatchIndex` directly:
 
 ```go
 func main() {
