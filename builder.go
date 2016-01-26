@@ -42,7 +42,7 @@ func (b *builder) nextCaptureIndex() int {
 }
 
 func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	pattern := string(f.Tag)
+	pattern := f.Tag.Get("regex")
 	if pattern == "" {
 		return nil, nil, nil
 	}
@@ -72,7 +72,7 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 }
 
 func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	opstr := f.Tag
+	opstr := f.Tag.Get("regex")
 	child, expr, err := b.structure(f.Type)
 	if err != nil {
 		return nil, nil, err
