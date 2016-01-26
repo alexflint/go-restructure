@@ -54,6 +54,13 @@ func (b *builder) extractTag(tag reflect.StructTag) (string, error) {
 	}
 }
 
+func removeCaptures(expr *syntax.Regexp) ([]*syntax.Regexp, error) {
+	if expr.Op == syntax.OpCapture {
+		return expr.Sub, nil
+	}
+	return []*syntax.Regexp{expr}, nil
+}
+
 func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
 	pattern, err := b.extractTag(f.Tag)
 	if err != nil {
@@ -67,6 +74,11 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 	expr, err := syntax.Parse(pattern, b.opts.SyntaxFlags)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`%s: %v (pattern was "%s")`, fullName, err, f.Tag)
+	}
+
+	expr, err = transform(expr, removeCaptures)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to remove captures from "%s": %v`, pattern, err)
 	}
 
 	captureIndex := -1

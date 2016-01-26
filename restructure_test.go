@@ -149,3 +149,16 @@ func TestErrorOnMalformedTag(t *testing.T) {
 	_, err := Compile(Malformed{}, Options{})
 	assert.Error(t, err)
 }
+
+type HasSubcaptures struct {
+	Name string `a(bc)?d`
+}
+
+func TestRemoveSubcaptures(t *testing.T) {
+	pattern, err := Compile(HasSubcaptures{}, Options{})
+	require.NoError(t, err)
+
+	var v HasSubcaptures
+	require.True(t, pattern.Find(&v, "abcd"))
+	assert.Equal(t, "abcd", v.Name)
+}
