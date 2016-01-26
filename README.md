@@ -113,3 +113,18 @@ func main() {
 	}
 }
 ```
+
+Also compare this to using the standard library `FindStringSubmatch`:
+
+```go
+func main() {
+	re := regexp.MustCompile(`^([a-zA-Z0-9._%+-]+)@(\w+)\.(\w+)$`)
+	m := re.FindStringSubmatch("joe@example.com")
+	if len(m) > 0 {
+		user, domain, tld := m[1], m[2], m[3]
+		fmt.Println(user)   // prints "joe"
+		fmt.Println(domain) // prints "example"
+		fmt.Println(tld)    // prints "com"
+	}
+}
+```
