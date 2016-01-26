@@ -13,11 +13,11 @@ This package allows you to express regular expressions by defining a struct, and
 import "github.com/alexflint/go-restructure"
 
 type EmailAddress struct {
-	_    string `regex:"^"`
-	User string `regex:"\\w+"`
-	_    string `regex:"@"`
-	Host string `regex:"[^@]+"`
-	_    string `regex:"$"`
+	_    string `regexp:"^"`
+	User string `regexp:"\\w+"`
+	_    string `regexp:"@"`
+	Host string `regexp:"[^@]+"`
+	_    string `regexp:"$"`
 }
 
 func main() {
@@ -43,17 +43,17 @@ Here is a slightly more sophisticated email address parser that uses nested stru
 import "github.com/alexflint/go-restructure"
 
 type Hostname struct {
-	Domain string   `regex:"\\w+"`
-	_      struct{} `regex:"\\."`
-	TLD    string   `regex:"\\w+"`
+	Domain string   `regexp:"\\w+"`
+	_      struct{} `regexp:"\\."`
+	TLD    string   `regexp:"\\w+"`
 }
 
 type EmailAddress struct {
-	_    struct{} `regex:"^"`
-	User string   `regex:"[a-zA-Z0-9._%+-]+"`
-	_    struct{} `regex:"@"`
+	_    struct{} `regexp:"^"`
+	User string   `regexp:"[a-zA-Z0-9._%+-]+"`
+	_    struct{} `regexp:"@"`
 	Host *Hostname
-	_    struct{} `regex:"$"`
+	_    struct{} `regexp:"$"`
 }
 
 func main() {
@@ -64,6 +64,16 @@ func main() {
 		fmt.Println(addr.Host.Domain) // prints "example"
 		fmt.Println(addr.Host.TLD)    // prints "com"
 	}
+}
+```
+
+If adding backslashes to escape your regular expressions become too tedious then you may omit the `regexp:` tag, but beware that this will make it impossible to add tags for other libraries to the same struct:
+
+```
+type Hostname struct {
+	Domain string   `\\w+`
+	_      struct{} `\\.`
+	TLD    string   `\\w+`
 }
 ```
 

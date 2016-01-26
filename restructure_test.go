@@ -9,15 +9,15 @@ import (
 )
 
 type DotName struct {
-	Dot  string `regex:"\\."`
-	Name string `regex:"\\w+"`
+	Dot  string `regexp:"\\."`
+	Name string `regexp:"\\w+"`
 }
 
 type DotExpr struct {
-	_    struct{} `regex:"^"`
-	Head string   `regex:"\\w+"`
-	Tail *DotName `regex:"?"`
-	_    struct{} `regex:"$"`
+	_    struct{} `regexp:"^"`
+	Head string   `regexp:"\\w+"`
+	Tail *DotName `regexp:"?"`
+	_    struct{} `regexp:"$"`
 }
 
 func TestMatchNameDotName(t *testing.T) {
@@ -51,11 +51,11 @@ func TestMatchNameDotNameFails(t *testing.T) {
 }
 
 type URL struct {
-	_      string `regex:"^"`
-	Scheme string `regex:"[[:alpha:]]+" json:"scheme"`
-	_      string `regex:"://"`
-	Host   string `regex:".*" json:"host"`
-	_      string `regex:"$"`
+	_      string `regexp:"^"`
+	Scheme string `regexp:"[[:alpha:]]+" json:"scheme"`
+	_      string `regexp:"://"`
+	Host   string `regexp:".*" json:"host"`
+	_      string `regexp:"$"`
 }
 
 func TestMatchURL(t *testing.T) {
@@ -82,11 +82,11 @@ func TestCombinationWithJSONTags(t *testing.T) {
 }
 
 type PtrURL struct {
-	_      struct{} `regex:"^"`
-	Scheme *string  `regex:"[[:alpha:]]+"`
-	_      struct{} `regex:"://"`
-	Host   *string  `regex:".*"`
-	_      struct{} `regex:"$"`
+	_      struct{} `regexp:"^"`
+	Scheme *string  `regexp:"[[:alpha:]]+"`
+	_      struct{} `regexp:"://"`
+	Host   *string  `regexp:".*"`
+	_      struct{} `regexp:"$"`
 }
 
 func TestMatchPtrURL(t *testing.T) {
@@ -109,4 +109,43 @@ func TestMatchPtrURLFailed(t *testing.T) {
 	require.False(t, pattern.Find(&v, "oops"))
 	assert.Nil(t, v.Scheme)
 	assert.Nil(t, v.Host)
+}
+
+type NakedURL struct {
+	_      string `^`
+	Scheme string `[[:alpha:]]+`
+	_      string `://`
+	Host   string `.*`
+	_      string `$`
+}
+
+func TestMatchNakedURL(t *testing.T) {
+	pattern, err := Compile(NakedURL{}, Options{})
+	require.NoError(t, err)
+
+	var v NakedURL
+	require.True(t, pattern.Find(&v, "http://example.com"))
+	assert.Equal(t, "http", v.Scheme)
+	assert.Equal(t, "example.com", v.Host)
+}
+
+type Nothing struct {
+	X string
+}
+
+func TestEmptyPattern(t *testing.T) {
+	pattern, err := Compile(Nothing{}, Options{})
+	require.NoError(t, err)
+
+	var v Nothing
+	require.True(t, pattern.Find(&v, "abc"))
+}
+
+type Malformed struct {
+	X string `regexp:"\w"` // this is malformed because \w is not a valid escape sequence
+}
+
+func TestErrorOnMalformedTag(t *testing.T) {
+	_, err := Compile(Malformed{}, Options{})
+	assert.Error(t, err)
 }
