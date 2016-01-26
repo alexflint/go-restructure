@@ -37,6 +37,20 @@ The regular expression that was executed was the concatenation of the struct tag
 
 The first submatch was inserted into the `User` field and the second into the `Host` field.
 
+You may also use the `regexp:` tag key, but keep in mind that you must escape quotes and backslashes:
+
+```go
+type EmailAddress struct {
+	_    string `regexp:"^"`
+	User string `regexp:"\\w+"`
+	_    string `regexp:"@"`
+	Host string `regexp:"[^@]+"`
+	_    string `regexp:"$"`
+}
+```
+
+### Nested Structs
+
 Here is a slightly more sophisticated email address parser that uses nested structs:
 
 ```go
@@ -67,7 +81,7 @@ func main() {
 }
 ```
 
-Compare this to using the standard library `FindStringSubmatchIndex` directly:
+Compare this to using the standard library `regexp.FindStringSubmatchIndex` directly:
 
 ```go
 func main() {

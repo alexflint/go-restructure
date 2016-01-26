@@ -1,9 +1,11 @@
 package restructure
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp/syntax"
+	"strings"
 )
 
 // A Struct describes how to inflate a match into a struct
@@ -41,6 +43,17 @@ func (b *builder) nextCaptureIndex() int {
 	return k
 }
 
+func (b *builder) extractTag(tag reflect.StructTag) (string, error) {
+	// Allow tags that look like either `regexp:"\\w+"` or just `\w+`
+	if s := tag.Get("regexp"); s != "" {
+		return s, nil
+	} else if strings.Contains(string(tag), `regexp:"`) {
+		return "", errors.New("incorrectly escaped struct tag")
+	} else {
+		return string(tag), nil
+	}
+}
+
 func removeCaptures(expr *syntax.Regexp) ([]*syntax.Regexp, error) {
 	if expr.Op == syntax.OpCapture {
 		return expr.Sub, nil
@@ -49,7 +62,10 @@ func removeCaptures(expr *syntax.Regexp) ([]*syntax.Regexp, error) {
 }
 
 func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	pattern := string(f.Tag)
+	pattern, err := b.extractTag(f.Tag)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %v", fullName, err)
+	}
 	if pattern == "" {
 		return nil, nil, nil
 	}
@@ -84,7 +100,10 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 }
 
 func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	opstr := f.Tag
+	opstr, err := b.extractTag(f.Tag)
+	if err != nil {
+		return nil, nil, err
+	}
 	child, expr, err := b.structure(f.Type)
 	if err != nil {
 		return nil, nil, err
@@ -144,8 +163,10 @@ func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		exprs = append(exprs, expr)
-		fields = append(fields, field)
+		if field != nil {
+			exprs = append(exprs, expr)
+			fields = append(fields, field)
+		}
 	}
 
 	// Wrap in a concat
