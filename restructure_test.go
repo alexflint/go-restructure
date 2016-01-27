@@ -164,21 +164,21 @@ func TestRemoveSubcaptures(t *testing.T) {
 }
 
 type DotNameRegion struct {
-	Begin BeginPos
-	End   BeginPos
-
-	Dot  *Region `regexp:"\\."`
-	Name *Region `regexp:"\\w+"`
+	Begin  Pos
+	Dot    *Region `regexp:"\\."`
+	Middle Pos
+	Name   *Region `regexp:"\\w+"`
+	End    Pos
 }
 
 type DotExprRegion struct {
-	Begin BeginPos
-	End   BeginPos
-
-	_    struct{}       `regexp:"^"`
-	Head Region         `regexp:"\\w+"`
-	Tail *DotNameRegion `regexp:"?"`
-	_    struct{}       `regexp:"$"`
+	Begin  Pos
+	_      struct{} `regexp:"^"`
+	Head   Region   `regexp:"\\w+"`
+	Middle Pos
+	Tail   *DotNameRegion `regexp:"?"`
+	_      struct{}       `regexp:"$"`
+	End    Pos
 }
 
 func assertRegion(t *testing.T, s string, begin int, end int, r *Region) {

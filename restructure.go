@@ -46,15 +46,10 @@ func matchFromIndices(indices []int, input []byte) *match {
 	return match
 }
 
-// BeginPos represents the beginning of a matched region. If a matched struct contains
-// a field of type BeginPos then it will be assigned the begin position of the region
-// matched to that struct.
-type BeginPos int
-
-// EndPos represents the beginning of a matched region. If a matched struct contains
-// a field of type BeginPos then it will be assigned the begin position of the region
-// matched to that struct.
-type EndPos int
+// Pos represents a position within a matched region. If a matched struct contains
+// a field of type Pos then this field will be assigned a value indicating a position
+// in the input string, where the position corresponds to the index of the Pos field.
+type Pos int
 
 // Region represents a matched region. It is a used to determine the begin and and
 // position of the match corresponding to a field. This library treats fields of type
@@ -62,8 +57,8 @@ type EndPos int
 // is inserted into `Region.Str` and its begin and end position are inserted into
 // `Region.Begin` and `Region.End`.
 type Region struct {
-	Begin int
-	End   int
+	Begin Pos
+	End   Pos
 	Bytes []byte
 }
 

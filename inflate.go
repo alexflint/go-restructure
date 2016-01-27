@@ -6,12 +6,12 @@ import (
 )
 
 var (
+	posType = reflect.TypeOf(Pos(0))
+
 	emptyType     = reflect.TypeOf(struct{}{})
 	stringType    = reflect.TypeOf("")
 	byteArrayType = reflect.TypeOf([]byte{})
 	regionType    = reflect.TypeOf(Region{})
-	beginPosType  = reflect.TypeOf(BeginPos(0))
-	endPosType    = reflect.TypeOf(EndPos(0))
 	scalarTypes   = []reflect.Type{
 		emptyType,
 		stringType,
@@ -85,12 +85,31 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 		return nil
 	case regionType:
 		region := dest.Addr().Interface().(*Region)
-		region.Begin = subcapture.begin
-		region.End = subcapture.end
+		region.Begin = Pos(subcapture.begin)
+		region.End = Pos(subcapture.end)
 		region.Bytes = buf
 		return nil
 	}
 	return fmt.Errorf("unable to capture into %s", dest.Type().String())
+}
+
+// inflate the position of a match into a Pos
+func inflatePos(dest reflect.Value, match *match, captureIndex int) error {
+	if captureIndex == -1 {
+		// This means the field generated a regex but we did not want the results
+		return nil
+	}
+
+	// Get the subcapture for this field
+	subcapture := match.captures[captureIndex]
+	if !subcapture.wasMatched() {
+		// This means the subcapture was optional and was not matched
+		return nil
+	}
+
+	// If dest is a nil pointer then allocate a new instance and assign the pointer to dest
+	dest.SetInt(int64(subcapture.begin))
+	return nil
 }
 
 // inflate the results of a match into a struct
@@ -108,10 +127,10 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 	for _, field := range structure.fields {
 		val := dest.FieldByIndex(field.index)
 		switch {
-		case val.Type() == beginPosType:
-			val.SetInt(int64(subcapture.begin))
-		case val.Type() == endPosType:
-			val.SetInt(int64(subcapture.end))
+		case val.Type() == posType:
+			if err := inflatePos(val, match, field.capture); err != nil {
+				return err
+			}
 		case isScalar(val.Type()):
 			if err := inflateScalar(val, match, field.capture); err != nil {
 				return err
