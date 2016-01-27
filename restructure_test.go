@@ -8,6 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func assertRegion(t *testing.T, s string, begin int, end int, r *Region) {
+	assert.NotNil(t, r)
+	assert.Equal(t, s, string(r.Bytes))
+	assert.EqualValues(t, begin, r.Begin)
+	assert.EqualValues(t, end, r.End)
+}
+
 type DotName struct {
 	Dot  string `regexp:"\\."`
 	Name string `regexp:"\\w+"`
@@ -164,28 +171,15 @@ func TestRemoveSubcaptures(t *testing.T) {
 }
 
 type DotNameRegion struct {
-	Begin  Pos
-	Dot    *Region `regexp:"\\."`
-	Middle Pos
-	Name   *Region `regexp:"\\w+"`
-	End    Pos
+	Dot  *Region `regexp:"\\."`
+	Name *Region `regexp:"\\w+"`
 }
 
 type DotExprRegion struct {
-	Begin  Pos
-	_      struct{} `regexp:"^"`
-	Head   Region   `regexp:"\\w+"`
-	Middle Pos
-	Tail   *DotNameRegion `regexp:"?"`
-	_      struct{}       `regexp:"$"`
-	End    Pos
-}
-
-func assertRegion(t *testing.T, s string, begin int, end int, r *Region) {
-	assert.NotNil(t, r)
-	assert.Equal(t, s, string(r.Bytes))
-	assert.EqualValues(t, begin, r.Begin)
-	assert.EqualValues(t, end, r.End)
+	_    struct{}       `regexp:"^"`
+	Head Region         `regexp:"\\w+"`
+	Tail *DotNameRegion `regexp:"?"`
+	_    struct{}       `regexp:"$"`
 }
 
 func TestMatchNameDotNameRegion(t *testing.T) {
@@ -198,4 +192,36 @@ func TestMatchNameDotNameRegion(t *testing.T) {
 	assert.NotNil(t, v.Tail)
 	assertRegion(t, ".", 3, 4, v.Tail.Dot)
 	assertRegion(t, "bar", 4, 7, v.Tail.Name)
+}
+
+type DotNamePos struct {
+	Begin  Pos
+	Dot    string `regexp:"\\."`
+	Middle Pos
+	Name   string `regexp:"\\w+"`
+	End    Pos
+}
+
+type DotExprPos struct {
+	Begin  Pos
+	_      struct{} `regexp:"^"`
+	Head   string   `regexp:"\\w+"`
+	Middle Pos
+	Tail   *DotNamePos `regexp:"?"`
+	_      struct{}    `regexp:"$"`
+	End    Pos
+}
+
+func TestMatchNameDotNamePos(t *testing.T) {
+	pattern, err := Compile(DotExprPos{}, Options{})
+	require.NoError(t, err)
+
+	var v DotExprPos
+	assert.True(t, pattern.Find(&v, "foo.bar"))
+	assert.EqualValues(t, 0, v.Begin)
+	assert.EqualValues(t, 3, v.Middle)
+	assert.EqualValues(t, 3, v.Tail.Begin)
+	assert.EqualValues(t, 4, v.Tail.Middle)
+	assert.EqualValues(t, 7, v.Tail.End)
+	assert.EqualValues(t, 7, v.End)
 }
