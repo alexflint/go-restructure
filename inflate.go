@@ -9,10 +9,14 @@ var (
 	emptyType     = reflect.TypeOf(struct{}{})
 	stringType    = reflect.TypeOf("")
 	byteArrayType = reflect.TypeOf([]byte{})
+	regionType    = reflect.TypeOf(Region{})
+	beginPosType  = reflect.TypeOf(BeginPos(0))
+	endPosType    = reflect.TypeOf(EndPos(0))
 	scalarTypes   = []reflect.Type{
 		emptyType,
 		stringType,
 		byteArrayType,
+		regionType,
 	}
 )
 
@@ -27,6 +31,14 @@ func isScalar(t reflect.Type) bool {
 		}
 	}
 	return false
+}
+
+// determines whether t is a struct type or a pointer to a struct type
+func isStruct(t reflect.Type) bool {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Struct
 }
 
 // ensureAlloc replaces nil pointers with newly allocated objects
@@ -46,15 +58,21 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 		// This means the field generated a regex but we did not want the results
 		return nil
 	}
-	region := match.captures[captureIndex]
-	if !region.wasMatched() {
-		// This means the region was optional and was not matched
+
+	// Get the subcapture for this field
+	subcapture := match.captures[captureIndex]
+	if !subcapture.wasMatched() {
+		// This means the subcapture was optional and was not matched
 		return nil
 	}
 
-	buf := match.input[region.begin:region.end]
+	// Get the matched bytes
+	buf := match.input[subcapture.begin:subcapture.end]
 
+	// If dest is a nil pointer then allocate a new instance and assign the pointer to dest
 	dest = ensureAlloc(dest)
+
+	// Deal with each recognized type
 	switch dest.Type() {
 	case stringType:
 		dest.SetString(string(buf))
@@ -65,24 +83,40 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 	case emptyType:
 		// ignore the value
 		return nil
+	case regionType:
+		region := dest.Addr().Interface().(*Region)
+		region.Begin = subcapture.begin
+		region.End = subcapture.end
+		region.Bytes = buf
+		return nil
 	}
 	return fmt.Errorf("unable to capture into %s", dest.Type().String())
 }
 
 // inflate the results of a match into a struct
 func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
-	if !match.captures[structure.capture].wasMatched() {
+	// Get the subcapture for this field
+	subcapture := match.captures[structure.capture]
+	if !subcapture.wasMatched() {
 		return nil
 	}
 
+	// If the field is a nil pointer then allocate an instance and assign pointer to dest
 	dest = ensureAlloc(dest)
+
+	// Inflate values into the struct fields
 	for _, field := range structure.fields {
 		val := dest.FieldByIndex(field.index)
-		if isScalar(val.Type()) {
+		switch {
+		case val.Type() == beginPosType:
+			val.SetInt(int64(subcapture.begin))
+		case val.Type() == endPosType:
+			val.SetInt(int64(subcapture.end))
+		case isScalar(val.Type()):
 			if err := inflateScalar(val, match, field.capture); err != nil {
 				return err
 			}
-		} else if field.child != nil {
+		case field.child != nil:
 			if err := inflateStruct(val, match, field.child); err != nil {
 				return err
 			}

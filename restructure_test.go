@@ -162,3 +162,40 @@ func TestRemoveSubcaptures(t *testing.T) {
 	require.True(t, pattern.Find(&v, "abcd"))
 	assert.Equal(t, "abcd", v.Name)
 }
+
+type DotNameRegion struct {
+	Begin BeginPos
+	End   BeginPos
+
+	Dot  *Region `regexp:"\\."`
+	Name *Region `regexp:"\\w+"`
+}
+
+type DotExprRegion struct {
+	Begin BeginPos
+	End   BeginPos
+
+	_    struct{}       `regexp:"^"`
+	Head Region         `regexp:"\\w+"`
+	Tail *DotNameRegion `regexp:"?"`
+	_    struct{}       `regexp:"$"`
+}
+
+func assertRegion(t *testing.T, s string, begin int, end int, r *Region) {
+	assert.NotNil(t, r)
+	assert.Equal(t, s, string(r.Bytes))
+	assert.EqualValues(t, begin, r.Begin)
+	assert.EqualValues(t, end, r.End)
+}
+
+func TestMatchNameDotNameRegion(t *testing.T) {
+	pattern, err := Compile(DotExprRegion{}, Options{})
+	require.NoError(t, err)
+
+	var v DotExprRegion
+	assert.True(t, pattern.Find(&v, "foo.bar"))
+	assertRegion(t, "foo", 0, 3, &v.Head)
+	assert.NotNil(t, v.Tail)
+	assertRegion(t, ".", 3, 4, v.Tail.Dot)
+	assertRegion(t, "bar", 4, 7, v.Tail.Name)
+}

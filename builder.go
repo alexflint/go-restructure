@@ -143,8 +143,10 @@ func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *
 func (b *builder) field(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
 	if isScalar(f.Type) {
 		return b.terminal(f, fullName)
+	} else if isStruct(f.Type) {
+		return b.nonterminal(f, fullName)
 	}
-	return b.nonterminal(f, fullName)
+	return nil, nil, nil
 }
 
 func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {

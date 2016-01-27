@@ -23,17 +23,17 @@ type Options struct {
 	SyntaxFlags syntax.Flags
 }
 
-type region struct {
+type subcapture struct {
 	begin, end int
 }
 
-func (r region) wasMatched() bool {
+func (r subcapture) wasMatched() bool {
 	return r.begin != -1 && r.end != -1
 }
 
 type match struct {
 	input    []byte
-	captures []region
+	captures []subcapture
 }
 
 func matchFromIndices(indices []int, input []byte) *match {
@@ -41,9 +41,35 @@ func matchFromIndices(indices []int, input []byte) *match {
 		input: input,
 	}
 	for i := 0; i < len(indices); i += 2 {
-		match.captures = append(match.captures, region{indices[i], indices[i+1]})
+		match.captures = append(match.captures, subcapture{indices[i], indices[i+1]})
 	}
 	return match
+}
+
+// BeginPos represents the beginning of a matched region. If a matched struct contains
+// a field of type BeginPos then it will be assigned the begin position of the region
+// matched to that struct.
+type BeginPos int
+
+// EndPos represents the beginning of a matched region. If a matched struct contains
+// a field of type BeginPos then it will be assigned the begin position of the region
+// matched to that struct.
+type EndPos int
+
+// Region represents a matched region. It is a used to determine the begin and and
+// position of the match corresponding to a field. This library treats fields of type
+// `Region` just like `string` or `[]byte` fields, except that the matched string
+// is inserted into `Region.Str` and its begin and end position are inserted into
+// `Region.Begin` and `Region.End`.
+type Region struct {
+	Begin int
+	End   int
+	Bytes []byte
+}
+
+// String gets the matched substring
+func (r *Region) String() string {
+	return string(r.Bytes)
 }
 
 // Regexp is a regular expression that captures submatches into struct fields.
@@ -53,10 +79,6 @@ type Regexp struct {
 	t    reflect.Type
 	opts Options
 }
-
-// Find attempts to match the regular expression against the input string. It
-// returns true if there was a match, and also populates the fields of the provided
-// struct with the contents of each submatch.
 
 // Find attempts to match the regular expression against the input string. It
 // returns true if there was a match, and also populates the fields of the provided
