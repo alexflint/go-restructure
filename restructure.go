@@ -23,17 +23,17 @@ type Options struct {
 	SyntaxFlags syntax.Flags
 }
 
-type region struct {
+type subcapture struct {
 	begin, end int
 }
 
-func (r region) wasMatched() bool {
+func (r subcapture) wasMatched() bool {
 	return r.begin != -1 && r.end != -1
 }
 
 type match struct {
 	input    []byte
-	captures []region
+	captures []subcapture
 }
 
 func matchFromIndices(indices []int, input []byte) *match {
@@ -41,9 +41,30 @@ func matchFromIndices(indices []int, input []byte) *match {
 		input: input,
 	}
 	for i := 0; i < len(indices); i += 2 {
-		match.captures = append(match.captures, region{indices[i], indices[i+1]})
+		match.captures = append(match.captures, subcapture{indices[i], indices[i+1]})
 	}
 	return match
+}
+
+// Pos represents a position within a matched region. If a matched struct contains
+// a field of type Pos then this field will be assigned a value indicating a position
+// in the input string, where the position corresponds to the index of the Pos field.
+type Pos int
+
+// Submatch represents a matched region. It is a used to determine the begin and and
+// position of the match corresponding to a field. This library treats fields of type
+// `Submatch` just like `string` or `[]byte` fields, except that the matched string
+// is inserted into `Submatch.Str` and its begin and end position are inserted into
+// `Submatch.Begin` and `Submatch.End`.
+type Submatch struct {
+	Begin Pos
+	End   Pos
+	Bytes []byte
+}
+
+// String gets the matched substring
+func (r *Submatch) String() string {
+	return string(r.Bytes)
 }
 
 // Regexp is a regular expression that captures submatches into struct fields.
@@ -53,10 +74,6 @@ type Regexp struct {
 	t    reflect.Type
 	opts Options
 }
-
-// Find attempts to match the regular expression against the input string. It
-// returns true if there was a match, and also populates the fields of the provided
-// struct with the contents of each submatch.
 
 // Find attempts to match the regular expression against the input string. It
 // returns true if there was a match, and also populates the fields of the provided

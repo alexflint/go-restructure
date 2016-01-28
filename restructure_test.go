@@ -8,6 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func assertRegion(t *testing.T, s string, begin int, end int, r *Submatch) {
+	assert.NotNil(t, r)
+	assert.Equal(t, s, string(r.Bytes))
+	assert.EqualValues(t, begin, r.Begin)
+	assert.EqualValues(t, end, r.End)
+}
+
 type DotName struct {
 	Dot  string `regexp:"\\."`
 	Name string `regexp:"\\w+"`
@@ -161,4 +168,91 @@ func TestRemoveSubcaptures(t *testing.T) {
 	var v HasSubcaptures
 	require.True(t, pattern.Find(&v, "abcd"))
 	assert.Equal(t, "abcd", v.Name)
+}
+
+type DotNameRegion struct {
+	Dot  *Submatch `regexp:"\\."`
+	Name *Submatch `regexp:"\\w+"`
+}
+
+type DotExprRegion struct {
+	_    struct{}       `regexp:"^"`
+	Head Submatch       `regexp:"\\w+"`
+	Tail *DotNameRegion `regexp:"?"`
+	_    struct{}       `regexp:"$"`
+}
+
+func TestMatchNameDotNameRegion(t *testing.T) {
+	pattern, err := Compile(DotExprRegion{}, Options{})
+	require.NoError(t, err)
+
+	var v DotExprRegion
+	assert.True(t, pattern.Find(&v, "foo.bar"))
+	assertRegion(t, "foo", 0, 3, &v.Head)
+	assert.NotNil(t, v.Tail)
+	assertRegion(t, ".", 3, 4, v.Tail.Dot)
+	assertRegion(t, "bar", 4, 7, v.Tail.Name)
+}
+
+type DotNamePos struct {
+	Begin  Pos
+	Dot    string `regexp:"\\."`
+	Middle Pos
+	Name   string `regexp:"\\w+"`
+	End    Pos
+}
+
+type DotExprPos struct {
+	Begin  Pos
+	_      struct{} `regexp:"^"`
+	Head   string   `regexp:"\\w+"`
+	Middle Pos
+	Tail   *DotNamePos `regexp:"?"`
+	_      struct{}    `regexp:"$"`
+	End    Pos
+}
+
+func TestMatchNameDotNamePos(t *testing.T) {
+	pattern, err := Compile(DotExprPos{}, Options{})
+	require.NoError(t, err)
+
+	var v DotExprPos
+	assert.True(t, pattern.Find(&v, "foo.bar"))
+	assert.EqualValues(t, 0, v.Begin)
+	assert.EqualValues(t, 3, v.Middle)
+	assert.EqualValues(t, 3, v.Tail.Begin)
+	assert.EqualValues(t, 4, v.Tail.Middle)
+	assert.EqualValues(t, 7, v.Tail.End)
+	assert.EqualValues(t, 7, v.End)
+}
+
+type DegeneratePos struct {
+	X Pos
+	Y Pos
+}
+
+func TestDegeneratePos(t *testing.T) {
+	// This tests what happens if there are degenerate position captures
+	pattern, err := Compile(DegeneratePos{}, Options{})
+	require.NoError(t, err)
+	var v DegeneratePos
+	assert.True(t, pattern.Find(&v, "abc"))
+	assert.EqualValues(t, 0, v.X)
+	assert.EqualValues(t, 0, v.Y)
+}
+
+type UnexportedPos struct {
+	Exported   Pos
+	unexported Pos
+	_          struct{} `regexp:"$"`
+}
+
+func TestUnexportedPos(t *testing.T) {
+	// This tests what happens if there are non-exported Pos fields
+	pattern, err := Compile(UnexportedPos{}, Options{})
+	require.NoError(t, err)
+	var v UnexportedPos
+	assert.True(t, pattern.Find(&v, "abc"))
+	assert.EqualValues(t, 3, v.Exported)
+	assert.EqualValues(t, 0, v.unexported) // should be ignored
 }
