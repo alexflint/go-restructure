@@ -54,8 +54,6 @@ type EmailAddress struct {
 Here is a slightly more sophisticated email address parser that uses nested structs:
 
 ```go
-import "github.com/alexflint/go-restructure"
-
 type Hostname struct {
 	Domain string   `\w+`
 	_      struct{} `\.`
@@ -112,4 +110,41 @@ func main() {
 		fmt.Println(tld)    // prints "com"
 	}
 }
+```
+
+### Getting begin and end positions for submatches
+
+To get the begin and end position of submatches, use the `restructure.Submatch` struct in place of `string`:
+
+```go
+type Submatch struct {
+	Begin Pos
+	End   Pos
+	Bytes []byte
+}
+```
+
+Here is an example of matching python imports such as `import foo as bar`:
+
+```go
+type Import struct {
+	_       struct{}             `^import\s+`
+	Package restructure.Submatch `\w+`
+	_       struct{}             `\s+as\s+`
+	Alias   restructure.Submatch `\w+`
+}
+
+var importRegexp = restructure.MustCompile(Import{}, restructure.Options{})
+
+func main() {
+	var imp Import
+	importRegexp.Find(&imp, "import foo as bar")
+	fmt.Printf("IMPORT %s (bytes %d...%d)\n", imp.Package.String(), imp.Package.Begin, imp.Package.End)
+	fmt.Printf("    AS %s (bytes %d...%d)\n", imp.Alias.String(), imp.Alias.Begin, imp.Alias.End)
+}
+```
+Output:
+```
+IMPORT foo (bytes 7...10)
+    AS bar (bytes 14...17)
 ```
