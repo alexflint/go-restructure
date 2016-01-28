@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func assertRegion(t *testing.T, s string, begin int, end int, r *Region) {
+func assertRegion(t *testing.T, s string, begin int, end int, r *Submatch) {
 	assert.NotNil(t, r)
 	assert.Equal(t, s, string(r.Bytes))
 	assert.EqualValues(t, begin, r.Begin)
@@ -171,13 +171,13 @@ func TestRemoveSubcaptures(t *testing.T) {
 }
 
 type DotNameRegion struct {
-	Dot  *Region `regexp:"\\."`
-	Name *Region `regexp:"\\w+"`
+	Dot  *Submatch `regexp:"\\."`
+	Name *Submatch `regexp:"\\w+"`
 }
 
 type DotExprRegion struct {
 	_    struct{}       `regexp:"^"`
-	Head Region         `regexp:"\\w+"`
+	Head Submatch       `regexp:"\\w+"`
 	Tail *DotNameRegion `regexp:"?"`
 	_    struct{}       `regexp:"$"`
 }

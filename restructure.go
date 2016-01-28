@@ -51,19 +51,19 @@ func matchFromIndices(indices []int, input []byte) *match {
 // in the input string, where the position corresponds to the index of the Pos field.
 type Pos int
 
-// Region represents a matched region. It is a used to determine the begin and and
+// Submatch represents a matched region. It is a used to determine the begin and and
 // position of the match corresponding to a field. This library treats fields of type
-// `Region` just like `string` or `[]byte` fields, except that the matched string
-// is inserted into `Region.Str` and its begin and end position are inserted into
-// `Region.Begin` and `Region.End`.
-type Region struct {
+// `Submatch` just like `string` or `[]byte` fields, except that the matched string
+// is inserted into `Submatch.Str` and its begin and end position are inserted into
+// `Submatch.Begin` and `Submatch.End`.
+type Submatch struct {
 	Begin Pos
 	End   Pos
 	Bytes []byte
 }
 
 // String gets the matched substring
-func (r *Region) String() string {
+func (r *Submatch) String() string {
 	return string(r.Bytes)
 }
 

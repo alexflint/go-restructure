@@ -11,12 +11,12 @@ var (
 	emptyType     = reflect.TypeOf(struct{}{})
 	stringType    = reflect.TypeOf("")
 	byteArrayType = reflect.TypeOf([]byte{})
-	regionType    = reflect.TypeOf(Region{})
+	submatchType  = reflect.TypeOf(Submatch{})
 	scalarTypes   = []reflect.Type{
 		emptyType,
 		stringType,
 		byteArrayType,
-		regionType,
+		submatchType,
 	}
 )
 
@@ -83,11 +83,11 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 	case emptyType:
 		// ignore the value
 		return nil
-	case regionType:
-		region := dest.Addr().Interface().(*Region)
-		region.Begin = Pos(subcapture.begin)
-		region.End = Pos(subcapture.end)
-		region.Bytes = buf
+	case submatchType:
+		submatch := dest.Addr().Interface().(*Submatch)
+		submatch.Begin = Pos(subcapture.begin)
+		submatch.End = Pos(subcapture.end)
+		submatch.Bytes = buf
 		return nil
 	}
 	return fmt.Errorf("unable to capture into %s", dest.Type().String())
