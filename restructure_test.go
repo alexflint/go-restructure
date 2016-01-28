@@ -225,3 +225,34 @@ func TestMatchNameDotNamePos(t *testing.T) {
 	assert.EqualValues(t, 7, v.Tail.End)
 	assert.EqualValues(t, 7, v.End)
 }
+
+type DegeneratePos struct {
+	X Pos
+	Y Pos
+}
+
+func TestDegeneratePos(t *testing.T) {
+	// This tests what happens if there are degenerate position captures
+	pattern, err := Compile(DegeneratePos{}, Options{})
+	require.NoError(t, err)
+	var v DegeneratePos
+	assert.True(t, pattern.Find(&v, "abc"))
+	assert.EqualValues(t, 0, v.X)
+	assert.EqualValues(t, 0, v.Y)
+}
+
+type UnexportedPos struct {
+	Exported   Pos
+	unexported Pos
+	_          struct{} `regexp:"$"`
+}
+
+func TestUnexportedPos(t *testing.T) {
+	// This tests what happens if there are non-exported Pos fields
+	pattern, err := Compile(UnexportedPos{}, Options{})
+	require.NoError(t, err)
+	var v UnexportedPos
+	assert.True(t, pattern.Find(&v, "abc"))
+	assert.EqualValues(t, 3, v.Exported)
+	assert.EqualValues(t, 0, v.unexported) // should be ignored
+}
