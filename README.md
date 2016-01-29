@@ -112,6 +112,56 @@ func main() {
 }
 ```
 
+### Optional fields
+
+When nesting one struct within another, you can make the nested struct optional by marking it with `?`. The following example parses floating point numbers with optional sign and exponent:
+
+```go
+// Matches "123", "1.23", "1.23e-4", "-12.3E+5", ".123"
+type Float struct {
+	Sign     *Sign     `?`      // sign is optional
+	Whole    string    `[0-9]*`
+	Period   struct{}  `\.?`
+	Frac     string    `[0-9]+`
+	Exponent *Exponent `?`      // exponent is optional
+}
+
+// Matches "e+4", "E6", "e-03"
+type Exponent struct {
+	_    struct{} `[eE]`
+	Sign *Sign    `?`         // sign is optional
+	Num  string   `[0-9]+`
+}
+
+// Matches "+" or "-"
+type Sign struct {
+	Ch string `[+-]`
+}
+```
+
+When an optional sub-struct is not matched, it will be set to nil:
+
+```javascript
+"1.23" -> {
+  "Sign": nil,
+  "Whole": "1",
+  "Frac": "23",
+  "Exponent": nil
+}
+
+"1.23e+45" -> {
+  "Sign": nil,
+  "Whole": "1",
+  "Frac": "23",
+  "Exponent": {
+    "Sign": {
+      "Ch": "+"
+    },
+    "Num": "45"
+  }
+}
+```
+
 ### Getting begin and end positions for submatches
 
 To get the begin and end position of submatches, use the `restructure.Submatch` struct in place of `string`:
