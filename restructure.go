@@ -105,6 +105,45 @@ func (r *Regexp) Find(dest interface{}, s string) bool {
 	return true
 }
 
+// FindAll attempts to match the regular expression against the input string. It returns true
+// if there was at least one match.
+func (r *Regexp) FindAll(dest interface{}, s string, limit int) {
+	// Check the type
+	v := reflect.ValueOf(dest)
+	t := v.Type()
+	if t.Kind() != reflect.Ptr {
+		panic(fmt.Errorf("parameter to FindAll should be a pointer to a slice but got %T", dest))
+	}
+
+	t = t.Elem()
+	if t.Kind() != reflect.Slice {
+		panic(fmt.Errorf("parameter to FindAll should be a pointer to a slice but got %T", dest))
+	}
+
+	t = t.Elem()
+	if t != r.t && t != reflect.PtrTo(r.t) {
+		panic(fmt.Errorf("expected the slice element to be %s or *%s but it was %s", r.t, r.t, t))
+	}
+
+	input := []byte(s)
+
+	// Execute the regular expression
+	matches := r.re.FindAllSubmatchIndex(input, limit)
+	for _, indices := range matches {
+		// Inflate matches into original struct
+		match := matchFromIndices(indices, input)
+
+		// Append an element to the slice
+		obj := reflect.New(r.t)
+		v.Elem().Set(reflect.Append(v.Elem(), obj))
+
+		err := inflateStruct(obj, match, r.st)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 // String returns a string representation of the regular expression
 func (r *Regexp) String() string {
 	return r.re.String()
