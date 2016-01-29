@@ -36,12 +36,12 @@ func main() {
 	arg.MustParse(&args)
 
 	// Construct the regular expression
-	pattern, err := restructure.Compile(&DotExpr{})
+	pattern, err := restructure.Compile(&DotExpr{}, restructure.Options{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Match
 	var v DotExpr
-	fmt.Println(pattern.Match(&v, args.Str))
+	fmt.Println(pattern.Find(&v, args.Str))
 }
