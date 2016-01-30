@@ -166,14 +166,6 @@ When an optional sub-struct is not matched, it will be set to nil:
 
 To get the begin and end position of submatches, use the `restructure.Submatch` struct in place of `string`:
 
-```go
-type Submatch struct {
-	Begin Pos
-	End   Pos
-	Bytes []byte
-}
-```
-
 Here is an example of matching python imports such as `import foo as bar`:
 
 ```go
