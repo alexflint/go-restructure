@@ -219,19 +219,19 @@ type SignedInt struct {
 
 // Matches "+12i", "-123i"
 type IPart struct {
-	Magniture SignedInt
+	Magnitude SignedInt
 	_         struct{} `regexp:"i"`
 }
 
 // Matches "+12j", "-123j"
 type JPart struct {
-	Magniture SignedInt
+	Magnitude SignedInt
 	_         struct{} `regexp:"j"`
 }
 
 // Matches "+12k", "-123k"
 type KPart struct {
-	Magniture SignedInt
+	Magnitude SignedInt
 	_         struct{} `regexp:"k"`
 }
 
@@ -290,19 +290,19 @@ The result is:
         "Real": "1"
       },
       "I": {
-        "Magniture": {
+        "Magnitude": {
           "Sign": "+",
           "Real": "2"
         }
       },
       "J": {
-        "Magniture": {
+        "Magnitude": {
           "Sign": "+",
           "Real": "3"
         }
       },
       "K": {
-        "Magniture": {
+        "Magnitude": {
           "Sign": "+",
           "Real": "4"
         }

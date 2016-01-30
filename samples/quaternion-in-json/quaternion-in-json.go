@@ -20,17 +20,17 @@ type SignedInt struct {
 }
 
 type IPart struct {
-	Magniture SignedInt
+	Magnitude SignedInt
 	_         struct{} `regexp:"i"`
 }
 
 type JPart struct {
-	Magniture SignedInt
+	Magnitude SignedInt
 	_         struct{} `regexp:"j"`
 }
 
 type KPart struct {
-	Magniture SignedInt
+	Magnitude SignedInt
 	_         struct{} `regexp:"k"`
 }
 
