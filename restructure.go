@@ -105,6 +105,52 @@ func (r *Regexp) Find(dest interface{}, s string) bool {
 	return true
 }
 
+// FindAll attempts to match the regular expression against the input string. It returns true
+// if there was at least one match.
+func (r *Regexp) FindAll(dest interface{}, s string, limit int) {
+	// Check the type
+	v := reflect.ValueOf(dest)
+	t := v.Type()
+	if t.Kind() != reflect.Ptr {
+		panic(fmt.Errorf("parameter to FindAll should be a pointer to a slice but got %T", dest))
+	}
+
+	sliceType := t.Elem()
+	if sliceType.Kind() != reflect.Slice {
+		panic(fmt.Errorf("parameter to FindAll should be a pointer to a slice but got %T", dest))
+	}
+
+	itemType := sliceType.Elem()
+	if itemType != r.t && itemType != reflect.PtrTo(r.t) {
+		panic(fmt.Errorf("expected the slice element to be %s or *%s but it was %s", r.t, r.t, t))
+	}
+
+	// Execute the regular expression
+	input := []byte(s)
+	matches := r.re.FindAllSubmatchIndex(input, limit)
+
+	// Allocate a slice with the desired length
+	v.Elem().Set(reflect.MakeSlice(sliceType, len(matches), len(matches)))
+
+	// Inflate the matches into the slice elements
+	for i, indices := range matches {
+		// Get the i-th element of the slice
+		destItem := v.Elem().Index(i)
+		if itemType.Kind() != reflect.Ptr {
+			destItem = destItem.Addr()
+		}
+
+		// Create the match object
+		match := matchFromIndices(indices, input)
+
+		// Inflate the match into the dest item
+		err := inflateStruct(destItem, match, r.st)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 // String returns a string representation of the regular expression
 func (r *Regexp) String() string {
 	return r.re.String()
