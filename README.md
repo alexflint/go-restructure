@@ -193,58 +193,88 @@ IMPORT foo (bytes 7...10)
 
 ### Regular expressions inside JSON
 
-To run a regular expression as part of a json unmarshal, just implement the `JSONUnmarshaler` interface. Here is an example that parses the following JSON string containing a complex number:
+To run a regular expression as part of a json unmarshal, just implement the `JSONUnmarshaler` interface. Here is an example that parses the following JSON string containing a quaternion:
 
 ```javascript
 {
 	"Var": "foo",
-	"Val": "12+34i"
+	"Val": "1+2i+3j+4k"
 }
 ```
 
-First we define the expressions for matching quoted strings containing complex numbers:
+First we define the expressions for matching quaternions in the form "1+2i+3j+4k":
 
 ```go
-// matches "-1+2i", "3-4i", "12+34i", etc
-type Complex struct {
-	Sign string   `regexp:"[+-]?"`
-	Real string   `regexp:"[0-9]+"`
-	_    struct{} `regexp:"[+-]"`
-	Imag string   `regexp:"[0-9]+"`
-	_    struct{} `regexp:"i"`
+// Matches "1", "-12", "+12"
+type RealPart struct {
+	Sign string `regexp:"[+-]?"`
+	Real string `regexp:"[0-9]+"`
+}
+
+// Matches "+123", "-1"
+type SignedInt struct {
+	Sign string `regexp:"[+-]"`
+	Real string `regexp:"[0-9]+"`
+}
+
+// Matches "+12i", "-123i"
+type IPart struct {
+	Magniture SignedInt
+	_         struct{} `regexp:"i"`
+}
+
+// Matches "+12j", "-123j"
+type JPart struct {
+	Magniture SignedInt
+	_         struct{} `regexp:"j"`
+}
+
+// Matches "+12k", "-123k"
+type KPart struct {
+	Magniture SignedInt
+	_         struct{} `regexp:"k"`
+}
+
+// matches "1+2i+3j+4k", "-1+2k", "-1", etc
+type Quaternion struct {
+	Real *RealPart
+	I    *IPart `regexp:"?"`
+	J    *JPart `regexp:"?"`
+	K    *KPart `regexp:"?"`
 }
 
 // matches the quoted strings `"-1+2i"`, `"3-4i"`, `"12+34i"`, etc
-type QuotedComplex struct {
-	_       struct{} `regexp:"^"`
-	_       struct{} `regexp:"\""`
-	Complex *Complex
-	_       struct{} `regexp:"\""`
-	_       struct{} `regexp:"$"`
+type QuotedQuaternion struct {
+	_          struct{} `regexp:"^"`
+	_          struct{} `regexp:"\""`
+	Quaternion *Quaternion
+	_          struct{} `regexp:"\""`
+	_          struct{} `regexp:"$"`
 }
 ```
 
 Next we implement `UnmarshalJSON` for the `QuotedComplex` type:
 ```go
-var complexRegex = restructure.MustCompile(QuotedComplex{}, restructure.Options{})
+var quaternionRegexp = restructure.MustCompile(QuotedQuaternion{}, restructure.Options{})
 
-func (c *QuotedComplex) UnmarshalJSON(b []byte) error {
-	if !complexRegex.Find(c, string(b)) {
+func (c *QuotedQuaternion) UnmarshalJSON(b []byte) error {
+	if !quaternionRegexp.Find(c, string(b)) {
 		return fmt.Errorf("%s is not a complex number", string(b))
 	}
 	return nil
 }
+
 ```
 
 Now we can define a struct and unmarshal JSON into it:
 ```go
 type Var struct {
 	Name  string
-	Value *QuotedComplex
+	Value *QuotedQuaternion
 }
 
 func main() {
-	src := `{"name": "foo", "value": "12+34i"}`
+	src := `{"name": "foo", "value": "1+2i+3j+4k"}`
 	var v Var
 	json.Unmarshal([]byte(src), &v)
 }
@@ -254,10 +284,29 @@ The result is:
 {
   "Name": "foo",
   "Value": {
-    "Complex": {
-      "Sign": "",
-      "Real": "12",
-      "Imag": "34"
+    "Quaternion": {
+      "Real": {
+        "Sign": "",
+        "Real": "1"
+      },
+      "I": {
+        "Magniture": {
+          "Sign": "+",
+          "Real": "2"
+        }
+      },
+      "J": {
+        "Magniture": {
+          "Sign": "+",
+          "Real": "3"
+        }
+      },
+      "K": {
+        "Magniture": {
+          "Sign": "+",
+          "Real": "4"
+        }
+      }
     }
   }
 }
