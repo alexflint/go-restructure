@@ -256,3 +256,55 @@ func TestUnexportedPos(t *testing.T) {
 	assert.EqualValues(t, 3, v.Exported)
 	assert.EqualValues(t, 0, v.unexported) // should be ignored
 }
+
+type Word struct {
+	S string `\w+`
+}
+
+func TestFindAllWords_Simple(t *testing.T) {
+	pattern := MustCompile(Word{}, Options{})
+	var words []Word
+	pattern.FindAll(&words, "ham is spam", -1)
+	require.Len(t, words, 3)
+	assert.EqualValues(t, "ham", words[0].S)
+	assert.EqualValues(t, "is", words[1].S)
+	assert.EqualValues(t, "spam", words[2].S)
+}
+
+func TestFindAllWords_Ptr(t *testing.T) {
+	pattern := MustCompile(Word{}, Options{})
+	var words []*Word
+	pattern.FindAll(&words, "ham is spam", -1)
+	require.Len(t, words, 3)
+	assert.EqualValues(t, "ham", words[0].S)
+	assert.EqualValues(t, "is", words[1].S)
+	assert.EqualValues(t, "spam", words[2].S)
+}
+
+func TestFindAllWords_NoMatches(t *testing.T) {
+	pattern := MustCompile(Word{}, Options{})
+	var words []*Word
+	pattern.FindAll(&words, "*&!", -1)
+	require.Empty(t, words)
+}
+
+func TestFindAllWords_ByValueSlicePanics(t *testing.T) {
+	pattern := MustCompile(Word{}, Options{})
+	var words []*Word
+	// This should panic because words is passed by value not by pointer:
+	assert.Panics(t, func() { pattern.FindAll(words, "*&!", -1) })
+}
+
+type WordSubmatch struct {
+	S *Submatch `\w+`
+}
+
+func TestFindAllWords_Regions(t *testing.T) {
+	pattern := MustCompile(WordSubmatch{}, Options{})
+	var words []*WordSubmatch
+	pattern.FindAll(&words, "ham is spam", -1)
+	require.Len(t, words, 3)
+	assertRegion(t, "ham", 0, 3, words[0].S)
+	assertRegion(t, "is", 4, 6, words[1].S)
+	assertRegion(t, "spam", 7, 11, words[2].S)
+}

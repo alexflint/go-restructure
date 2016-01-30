@@ -115,29 +115,36 @@ func (r *Regexp) FindAll(dest interface{}, s string, limit int) {
 		panic(fmt.Errorf("parameter to FindAll should be a pointer to a slice but got %T", dest))
 	}
 
-	t = t.Elem()
-	if t.Kind() != reflect.Slice {
+	sliceType := t.Elem()
+	if sliceType.Kind() != reflect.Slice {
 		panic(fmt.Errorf("parameter to FindAll should be a pointer to a slice but got %T", dest))
 	}
 
-	t = t.Elem()
-	if t != r.t && t != reflect.PtrTo(r.t) {
+	itemType := sliceType.Elem()
+	if itemType != r.t && itemType != reflect.PtrTo(r.t) {
 		panic(fmt.Errorf("expected the slice element to be %s or *%s but it was %s", r.t, r.t, t))
 	}
 
-	input := []byte(s)
-
 	// Execute the regular expression
+	input := []byte(s)
 	matches := r.re.FindAllSubmatchIndex(input, limit)
-	for _, indices := range matches {
-		// Inflate matches into original struct
+
+	// Allocate a slice with the desired length
+	v.Elem().Set(reflect.MakeSlice(sliceType, len(matches), len(matches)))
+
+	// Inflate the matches into the slice elements
+	for i, indices := range matches {
+		// Get the i-th element of the slice
+		destItem := v.Elem().Index(i)
+		if itemType.Kind() != reflect.Ptr {
+			destItem = destItem.Addr()
+		}
+
+		// Create the match object
 		match := matchFromIndices(indices, input)
 
-		// Append an element to the slice
-		obj := reflect.New(r.t)
-		v.Elem().Set(reflect.Append(v.Elem(), obj))
-
-		err := inflateStruct(obj, match, r.st)
+		// Inflate the match into the dest item
+		err := inflateStruct(destItem, match, r.st)
 		if err != nil {
 			panic(err)
 		}
