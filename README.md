@@ -190,3 +190,74 @@ Output:
 IMPORT foo (bytes 7...10)
     AS bar (bytes 14...17)
 ```
+
+### Regular expressions inside JSON
+
+To run a regular expression as part of a json unmarshal, just implement the `JSONUnmarshaler` interface. Here is an example that parses a complex number from a json string that looks like
+
+```javascript
+{
+	"Var": "foo",
+	"Val": "12+34i"
+}
+
+First we define the expressions for matching quoted strings containing complex numbers:
+
+```go
+// matches "-1+2i", "3-4i", "12+34i", etc
+type Complex struct {
+	Sign string   `regexp:"[+-]?"`
+	Real string   `regexp:"[0-9]+"`
+	_    struct{} `regexp:"[+-]"`
+	Imag string   `regexp:"[0-9]+"`
+	_    struct{} `regexp:"i"`
+}
+
+// matches the quoted strings `"-1+2i"`, `"3-4i"`, `"12+34i"`, etc
+type QuotedComplex struct {
+	_       struct{} `regexp:"^"`
+	_       struct{} `regexp:"\""`
+	Complex *Complex
+	_       struct{} `regexp:"\""`
+	_       struct{} `regexp:"$"`
+}
+```
+
+Next we implement `UnmarshalJSON` for the `QuotedComplex` type:
+```go
+var complexRegex = restructure.MustCompile(QuotedComplex{}, restructure.Options{})
+
+func (c *QuotedComplex) UnmarshalJSON(b []byte) error {
+	if !complexRegex.Find(c, string(b)) {
+		return fmt.Errorf("%s is not a complex number", string(b))
+	}
+	return nil
+}
+```
+
+Now we can define a struct and unmarshal JSON into it:
+```go
+type Var struct {
+	Name  string
+	Value *QuotedComplex
+}
+
+func main() {
+	src := `{"name": "foo", "value": "12+34i"}`
+	var v Var
+	json.Unmarshal([]byte(src), &v)
+}
+```
+The result is:
+```javascript
+{
+  "Name": "foo",
+  "Value": {
+    "Complex": {
+      "Sign": "",
+      "Real": "12",
+      "Imag": "34"
+    }
+  }
+}
+```
