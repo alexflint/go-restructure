@@ -202,7 +202,7 @@ To run a regular expression as part of a json unmarshal, just implement the `JSO
 }
 ```
 
-First we define the expressions for matching quaternions in the form "1+2i+3j+4k":
+First we define the expressions for matching quaternions in the form `1+2i+3j+4k`:
 
 ```go
 // Matches "1", "-12", "+12"
@@ -253,13 +253,13 @@ type QuotedQuaternion struct {
 }
 ```
 
-Next we implement `UnmarshalJSON` for the `QuotedComplex` type:
+Next we implement `UnmarshalJSON` for the `QuotedQuaternion` type:
 ```go
 var quaternionRegexp = restructure.MustCompile(QuotedQuaternion{}, restructure.Options{})
 
 func (c *QuotedQuaternion) UnmarshalJSON(b []byte) error {
 	if !quaternionRegexp.Find(c, string(b)) {
-		return fmt.Errorf("%s is not a complex number", string(b))
+		return fmt.Errorf("%s is not a quaternion", string(b))
 	}
 	return nil
 }
