@@ -166,14 +166,6 @@ When an optional sub-struct is not matched, it will be set to nil:
 
 To get the begin and end position of submatches, use the `restructure.Submatch` struct in place of `string`:
 
-```go
-type Submatch struct {
-	Begin Pos
-	End   Pos
-	Bytes []byte
-}
-```
-
 Here is an example of matching python imports such as `import foo as bar`:
 
 ```go
@@ -197,4 +189,125 @@ Output:
 ```
 IMPORT foo (bytes 7...10)
     AS bar (bytes 14...17)
+```
+
+### Regular expressions inside JSON
+
+To run a regular expression as part of a json unmarshal, just implement the `JSONUnmarshaler` interface. Here is an example that parses the following JSON string containing a quaternion:
+
+```javascript
+{
+	"Var": "foo",
+	"Val": "1+2i+3j+4k"
+}
+```
+
+First we define the expressions for matching quaternions in the form `1+2i+3j+4k`:
+
+```go
+// Matches "1", "-12", "+12"
+type RealPart struct {
+	Sign string `regexp:"[+-]?"`
+	Real string `regexp:"[0-9]+"`
+}
+
+// Matches "+123", "-1"
+type SignedInt struct {
+	Sign string `regexp:"[+-]"`
+	Real string `regexp:"[0-9]+"`
+}
+
+// Matches "+12i", "-123i"
+type IPart struct {
+	Magnitude SignedInt
+	_         struct{} `regexp:"i"`
+}
+
+// Matches "+12j", "-123j"
+type JPart struct {
+	Magnitude SignedInt
+	_         struct{} `regexp:"j"`
+}
+
+// Matches "+12k", "-123k"
+type KPart struct {
+	Magnitude SignedInt
+	_         struct{} `regexp:"k"`
+}
+
+// matches "1+2i+3j+4k", "-1+2k", "-1", etc
+type Quaternion struct {
+	Real *RealPart
+	I    *IPart `regexp:"?"`
+	J    *JPart `regexp:"?"`
+	K    *KPart `regexp:"?"`
+}
+
+// matches the quoted strings `"-1+2i"`, `"3-4i"`, `"12+34i"`, etc
+type QuotedQuaternion struct {
+	_          struct{} `regexp:"^"`
+	_          struct{} `regexp:"\""`
+	Quaternion *Quaternion
+	_          struct{} `regexp:"\""`
+	_          struct{} `regexp:"$"`
+}
+```
+
+Next we implement `UnmarshalJSON` for the `QuotedQuaternion` type:
+```go
+var quaternionRegexp = restructure.MustCompile(QuotedQuaternion{}, restructure.Options{})
+
+func (c *QuotedQuaternion) UnmarshalJSON(b []byte) error {
+	if !quaternionRegexp.Find(c, string(b)) {
+		return fmt.Errorf("%s is not a quaternion", string(b))
+	}
+	return nil
+}
+
+```
+
+Now we can define a struct and unmarshal JSON into it:
+```go
+type Var struct {
+	Name  string
+	Value *QuotedQuaternion
+}
+
+func main() {
+	src := `{"name": "foo", "value": "1+2i+3j+4k"}`
+	var v Var
+	json.Unmarshal([]byte(src), &v)
+}
+```
+The result is:
+```javascript
+{
+  "Name": "foo",
+  "Value": {
+    "Quaternion": {
+      "Real": {
+        "Sign": "",
+        "Real": "1"
+      },
+      "I": {
+        "Magnitude": {
+          "Sign": "+",
+          "Real": "2"
+        }
+      },
+      "J": {
+        "Magnitude": {
+          "Sign": "+",
+          "Real": "3"
+        }
+      },
+      "K": {
+        "Magnitude": {
+          "Sign": "+",
+          "Real": "4"
+        }
+      }
+    }
+  }
+}
 ```
