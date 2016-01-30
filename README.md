@@ -193,13 +193,14 @@ IMPORT foo (bytes 7...10)
 
 ### Regular expressions inside JSON
 
-To run a regular expression as part of a json unmarshal, just implement the `JSONUnmarshaler` interface. Here is an example that parses a complex number from a json string that looks like
+To run a regular expression as part of a json unmarshal, just implement the `JSONUnmarshaler` interface. Here is an example that parses the following JSON string containing a complex number:
 
 ```javascript
 {
 	"Var": "foo",
 	"Val": "12+34i"
 }
+```
 
 First we define the expressions for matching quoted strings containing complex numbers:
 
