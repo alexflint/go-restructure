@@ -122,17 +122,19 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 
 	// Inflate values into the struct fields
 	for _, field := range structure.fields {
-		val := dest.FieldByIndex(field.index)
 		switch field.role {
 		case PosRole:
+			val := dest.FieldByIndex(field.index)
 			if err := inflatePos(val, match, field.capture); err != nil {
 				return err
 			}
 		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole:
+			val := dest.FieldByIndex(field.index)
 			if err := inflateScalar(val, match, field.capture); err != nil {
 				return err
 			}
 		case SubstructRole:
+			val := dest.FieldByIndex(field.index)
 			if err := inflateStruct(val, match, field.child); err != nil {
 				return err
 			}
