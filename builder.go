@@ -8,6 +8,18 @@ import (
 	"strings"
 )
 
+// A Role determines how a struct field is inflated
+type Role int
+
+const (
+	EmptyRole Role = iota
+	PosRole
+	SubstructRole
+	StringScalarRole
+	ByteSliceScalarRole
+	SubmatchScalarRole
+)
+
 // A Struct describes how to inflate a match into a struct
 type Struct struct {
 	capture int
@@ -19,6 +31,7 @@ type Field struct {
 	capture int     // index of the capture for this field
 	index   []int   // index of this field within its parent struct
 	child   *Struct // descendant struct; nil for terminals
+	role    Role
 }
 
 func isExported(f reflect.StructField) bool {
@@ -70,15 +83,33 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 		return nil, nil, nil
 	}
 
-	// TODO: check for sub-captures within expr and remove them
+	// Parse the pattern
 	expr, err := syntax.Parse(pattern, b.opts.SyntaxFlags)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`%s: %v (pattern was "%s")`, fullName, err, f.Tag)
 	}
 
+	// Remove capture nodes within the AST
 	expr, err = transform(expr, removeCaptures)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to remove captures from "%s": %v`, pattern, err)
+	}
+
+	// Determine the kind
+	t := f.Type
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	var role Role
+	switch t {
+	case emptyType:
+		role = EmptyRole
+	case stringType:
+		role = StringScalarRole
+	case byteSliceType:
+		role = ByteSliceScalarRole
+	case submatchType:
+		role = SubmatchScalarRole
 	}
 
 	captureIndex := -1
@@ -94,6 +125,7 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 	field := &Field{
 		index:   f.Index,
 		capture: captureIndex,
+		role:    role,
 	}
 
 	return field, expr, nil
@@ -116,6 +148,7 @@ func (b *builder) pos(f reflect.StructField, fullName string) (*Field, *syntax.R
 	field := &Field{
 		index:   f.Index,
 		capture: captureIndex,
+		role:    PosRole,
 	}
 
 	return field, expr, nil
@@ -157,6 +190,7 @@ func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *
 		index:   f.Index,
 		capture: captureIndex,
 		child:   child,
+		role:    SubstructRole,
 	}
 
 	return field, expr, nil

@@ -10,12 +10,12 @@ var (
 
 	emptyType     = reflect.TypeOf(struct{}{})
 	stringType    = reflect.TypeOf("")
-	byteArrayType = reflect.TypeOf([]byte{})
+	byteSliceType = reflect.TypeOf([]byte{})
 	submatchType  = reflect.TypeOf(Submatch{})
 	scalarTypes   = []reflect.Type{
 		emptyType,
 		stringType,
-		byteArrayType,
+		byteSliceType,
 		submatchType,
 	}
 )
@@ -77,11 +77,8 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 	case stringType:
 		dest.SetString(string(buf))
 		return nil
-	case byteArrayType:
+	case byteSliceType:
 		dest.SetBytes(buf)
-		return nil
-	case emptyType:
-		// ignore the value
 		return nil
 	case submatchType:
 		submatch := dest.Addr().Interface().(*Submatch)
@@ -126,16 +123,16 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 	// Inflate values into the struct fields
 	for _, field := range structure.fields {
 		val := dest.FieldByIndex(field.index)
-		switch {
-		case val.Type() == posType:
+		switch field.role {
+		case PosRole:
 			if err := inflatePos(val, match, field.capture); err != nil {
 				return err
 			}
-		case isScalar(val.Type()):
+		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole:
 			if err := inflateScalar(val, match, field.capture); err != nil {
 				return err
 			}
-		case field.child != nil:
+		case SubstructRole:
 			if err := inflateStruct(val, match, field.child); err != nil {
 				return err
 			}
