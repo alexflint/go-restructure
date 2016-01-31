@@ -325,3 +325,13 @@ The result is:
   }
 }
 ```
+
+### Index of examples
+
+- [Parse an email address](samples/simple-email/simple-email.go)
+- [Parse an email address using nested structs](samples/email-address/email-address.go)
+- [Parse a floating point number](samples/floating-point/floating-point.go)
+- [Find all floats in a string](samples/find-all-floats/find-all-floats.go)
+- [Parse a dotted name](samples/name-dot-name/name-dot-name.go)
+- [Parse a python import statement](samples/python-import/python-import.go)
+- [Regular expression inside a JSON struct](samples/quaternion-in-json/quaternion-in-json.go)
