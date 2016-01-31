@@ -53,7 +53,7 @@ func ensureAlloc(dest reflect.Value) reflect.Value {
 }
 
 // inflate the results of a match into a string
-func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
+func inflateScalar(dest reflect.Value, match *match, captureIndex int, role Role) error {
 	if captureIndex == -1 {
 		// This means the field generated a regex but we did not want the results
 		return nil
@@ -73,14 +73,14 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 	dest = ensureAlloc(dest)
 
 	// Deal with each recognized type
-	switch dest.Type() {
-	case stringType:
+	switch role {
+	case StringScalarRole:
 		dest.SetString(string(buf))
 		return nil
-	case byteSliceType:
+	case ByteSliceScalarRole:
 		dest.SetBytes(buf)
 		return nil
-	case submatchType:
+	case SubmatchScalarRole:
 		submatch := dest.Addr().Interface().(*Submatch)
 		submatch.Begin = Pos(subcapture.begin)
 		submatch.End = Pos(subcapture.end)
@@ -130,7 +130,7 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 			}
 		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole:
 			val := dest.FieldByIndex(field.index)
-			if err := inflateScalar(val, match, field.capture); err != nil {
+			if err := inflateScalar(val, match, field.capture, field.role); err != nil {
 				return err
 			}
 		case SubstructRole:
