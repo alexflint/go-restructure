@@ -335,3 +335,7 @@ The result is:
 - [Parse a dotted name](samples/name-dot-name/name-dot-name.go)
 - [Parse a python import statement](samples/python-import/python-import.go)
 - [Regular expression inside a JSON struct](samples/quaternion-in-json/quaternion-in-json.go)
+
+### Benchmarks
+
+See [benchmarks document](BENCHMARKS.md)

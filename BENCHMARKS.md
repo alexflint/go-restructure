@@ -1,6 +1,6 @@
 ## Performance Benchmarks
 
-There are three benchmarks in `benchmark_test.go` that compare the performance of `go-restructure` to that of the standard library. `go-restructure` uses a very slightly modified version of the standard library `regexp` package so the performance of the core regular expression evaluators should be very similar; most of the difference is therefore associated with the overhead of reflection.
+There are three benchmarks in `benchmark_test.go` that compare the performance of `go-restructure` to that of the standard library `regexp` package. `go-restructure` uses a very slightly modified version of the `regexp` package so the performance of the core regular expression evaluator is very similar; most of the difference is therefore associated with the overhead of reflection.
 
 These benchmarks were computed using `go test -bench=.` on an 2.8 GHz Intel Core i7 processor running OSX 10.10.5.
 
@@ -19,7 +19,7 @@ go-restructure		1188 ns/op
 stdlib/regexp		844 ns/op
 ```
 
-The third benchmark involves finding all python import statements in a life of around one hundred lines of python source. `go-restructure` takes around 2x as long as the standard library:
+The third benchmark involves finding all python import statements in a file of around one hundred lines of python source. `go-restructure` takes around 2x longer than the standard library:
 
 ```
 go-restructure		695 ns/op
