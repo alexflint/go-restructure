@@ -85,8 +85,7 @@ func (r *Regexp) Find(dest interface{}, s string) bool {
 	// Check the type
 	expected := reflect.PtrTo(r.t)
 	if v.Type() != expected {
-		panic(fmt.Errorf("expected destination to be %s but got %T",
-			expected.String(), dest))
+		panic(fmt.Errorf("expected destination to be *%s but got %T", r.t.String(), dest))
 	}
 
 	// Execute the regular expression

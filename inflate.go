@@ -10,12 +10,12 @@ var (
 
 	emptyType     = reflect.TypeOf(struct{}{})
 	stringType    = reflect.TypeOf("")
-	byteArrayType = reflect.TypeOf([]byte{})
+	byteSliceType = reflect.TypeOf([]byte{})
 	submatchType  = reflect.TypeOf(Submatch{})
 	scalarTypes   = []reflect.Type{
 		emptyType,
 		stringType,
-		byteArrayType,
+		byteSliceType,
 		submatchType,
 	}
 )
@@ -53,7 +53,7 @@ func ensureAlloc(dest reflect.Value) reflect.Value {
 }
 
 // inflate the results of a match into a string
-func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
+func inflateScalar(dest reflect.Value, match *match, captureIndex int, role Role) error {
 	if captureIndex == -1 {
 		// This means the field generated a regex but we did not want the results
 		return nil
@@ -73,17 +73,14 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
 	dest = ensureAlloc(dest)
 
 	// Deal with each recognized type
-	switch dest.Type() {
-	case stringType:
+	switch role {
+	case StringScalarRole:
 		dest.SetString(string(buf))
 		return nil
-	case byteArrayType:
+	case ByteSliceScalarRole:
 		dest.SetBytes(buf)
 		return nil
-	case emptyType:
-		// ignore the value
-		return nil
-	case submatchType:
+	case SubmatchScalarRole:
 		submatch := dest.Addr().Interface().(*Submatch)
 		submatch.Begin = Pos(subcapture.begin)
 		submatch.End = Pos(subcapture.end)
@@ -125,17 +122,19 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 
 	// Inflate values into the struct fields
 	for _, field := range structure.fields {
-		val := dest.FieldByIndex(field.index)
-		switch {
-		case val.Type() == posType:
+		switch field.role {
+		case PosRole:
+			val := dest.FieldByIndex(field.index)
 			if err := inflatePos(val, match, field.capture); err != nil {
 				return err
 			}
-		case isScalar(val.Type()):
-			if err := inflateScalar(val, match, field.capture); err != nil {
+		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole:
+			val := dest.FieldByIndex(field.index)
+			if err := inflateScalar(val, match, field.capture, field.role); err != nil {
 				return err
 			}
-		case field.child != nil:
+		case SubstructRole:
+			val := dest.FieldByIndex(field.index)
 			if err := inflateStruct(val, match, field.child); err != nil {
 				return err
 			}
