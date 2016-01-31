@@ -47,7 +47,7 @@ type Exponent struct {
 	Num  string   `[0-9]+`
 }
 
-func BenchmarkParseFloat(b *testing.B) {
+func BenchmarkFindFloat(b *testing.B) {
 	pattern := MustCompile(Float{}, Options{})
 	var f Float
 	b.ResetTimer()
@@ -56,7 +56,7 @@ func BenchmarkParseFloat(b *testing.B) {
 	}
 }
 
-func BenchmarkParseFloatStdlib(b *testing.B) {
+func BenchmarkFindFloatStdlib(b *testing.B) {
 	pattern := regexp.MustCompile(`((?P<Sign>((?P<Ch>[\+\-]))?)(?P<Whole>[0-9]*)(?P<Period>\.?)(?P<Frac>[0-9]+)(?P<Exponent>((?i:E)(?P<Sign>((?P<Ch>[\+\-]))?)(?P<Num>[0-9]+))?))`)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
