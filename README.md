@@ -162,6 +162,20 @@ When an optional sub-struct is not matched, it will be set to nil:
 }
 ```
 
+### Finding multiple matches
+
+The following example uses `Regexp.FindAll` to extract all floating point numbers from
+a string, using the same `Float` struct as in the example above.
+
+```go
+src := "There are 10.4 cats for every 100 dogs in the United States."
+floatRegexp := restructure.MustCompile(Float{}, restructure.Options{})
+var floats []Float
+floatRegexp.FindAll(&floats, src, -1)
+```
+
+To limit the number of matches set the third parameter to a positive number.
+
 ### Getting begin and end positions for submatches
 
 To get the begin and end position of submatches, use the `restructure.Submatch` struct in place of `string`:
