@@ -48,10 +48,10 @@ func matchFromIndices(indices []int, input []byte) *match {
 
 // Regexp is a regular expression that captures submatches into struct fields.
 type Regexp struct {
-	st   *Struct
-	re   *regex.Regexp
-	t    reflect.Type
-	opts Options
+	class interface{}
+	re    *regex.Regexp
+	t     reflect.Type
+	opts  Options
 }
 
 // Find attempts to match the regular expression against the input string. It
@@ -81,7 +81,7 @@ func (r *Regexp) Find(dest interface{}, s string) bool {
 	// Inflate matches into original struct
 	match := matchFromIndices(indices, input)
 
-	err := inflateStruct(v, match, r.st)
+	err := inflate(v, match, r.class)
 	if err != nil {
 		panic(err)
 	}
@@ -116,7 +116,7 @@ func CompileType(t reflect.Type, opts Options) (*Regexp, error) {
 
 	// Traverse the struct
 	b := newBuilder(opts)
-	st, expr, err := b.structure(t)
+	class, expr, err := b.build(t)
 	if err != nil {
 		return nil, err
 	}
@@ -129,10 +129,10 @@ func CompileType(t reflect.Type, opts Options) (*Regexp, error) {
 
 	// Return
 	return &Regexp{
-		st:   st,
-		re:   re,
-		t:    t,
-		opts: opts,
+		class: class,
+		re:    re,
+		t:     t,
+		opts:  opts,
 	}, nil
 }
 

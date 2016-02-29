@@ -83,10 +83,45 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 				return err
 			}
 		} else if field.child != nil {
-			if err := inflateStruct(val, match, field.child); err != nil {
+			if err := inflate(val, match, field.child); err != nil {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// inflate the results of a match into a union
+func inflateUnion(dest reflect.Value, match *match, union *Union) error {
+	if dest.Kind() == reflect.Ptr {
+		dest = dest.Elem()
+	}
+	for i, distjunct := range union.disjuncts {
+		if match.captures[distjunct.capture].wasMatched() {
+			ptr := reflect.New(union.class.structs[i])
+			if err := inflateStruct(ptr, match, distjunct); err != nil {
+				return err
+			}
+			dest.Set(ptr)
+			return nil
+		}
+	}
+	return nil
+}
+
+// inflate the result of a match
+func inflate(dest reflect.Value, match *match, class interface{}) error {
+	switch class := class.(type) {
+	case *Struct:
+		if err := inflateStruct(dest, match, class); err != nil {
+			return err
+		}
+	case *Union:
+		if err := inflateUnion(dest, match, class); err != nil {
+			return err
+		}
+	default:
+		panic(fmt.Errorf("invalid class: %T", class))
 	}
 	return nil
 }
