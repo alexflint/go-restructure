@@ -10,9 +10,6 @@ import (
 func init() {
 	var scalar Scalar
 	RegisterUnion(&scalar, StringLiteral{}, IntLiteral{})
-
-	// var byptr IfaceByPtr
-	// RegisterUnion(&byptr, &StructByPtr{})
 }
 
 type Scalar interface{}
@@ -58,20 +55,3 @@ func TestUnionNonmatch(t *testing.T) {
 	pat := MustCompile(&assign, Options{})
 	assert.False(t, pat.Find(&assign, "abc=x7"))
 }
-
-type IfaceByPtr interface {
-	Foo()
-}
-
-type StructByPtr struct {
-	_ string `.*`
-}
-
-func (*StructByPtr) Foo() {}
-
-// func TestUnionByPtr(t *testing.T) {
-// 	var foo IfaceByPtr
-// 	matched, err := Find(&foo, "abc")
-// 	require.NoError(t, err)
-// 	require.True(t, matched)
-// }
