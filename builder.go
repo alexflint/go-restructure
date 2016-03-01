@@ -1,9 +1,23 @@
 package restructure
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp/syntax"
+	"strings"
+)
+
+// A Role determines how a struct field is inflated
+type Role int
+
+const (
+	EmptyRole Role = iota
+	PosRole
+	SubstructRole
+	StringScalarRole
+	ByteSliceScalarRole
+	SubmatchScalarRole
 )
 
 // A Struct describes how to inflate a match into a struct
@@ -23,6 +37,7 @@ type Field struct {
 	capture int         // index of the capture for this field
 	index   []int       // index of this field within its parent struct
 	child   interface{} // descendant struct or union; nil for terminals
+	role    Role
 }
 
 func isExported(f reflect.StructField) bool {
@@ -47,16 +62,60 @@ func (b *builder) nextCaptureIndex() int {
 	return k
 }
 
+func (b *builder) extractTag(tag reflect.StructTag) (string, error) {
+	// Allow tags that look like either `regexp:"\\w+"` or just `\w+`
+	if s := tag.Get("regexp"); s != "" {
+		return s, nil
+	} else if strings.Contains(string(tag), `regexp:"`) {
+		return "", errors.New("incorrectly escaped struct tag")
+	} else {
+		return string(tag), nil
+	}
+}
+
+func removeCaptures(expr *syntax.Regexp) ([]*syntax.Regexp, error) {
+	if expr.Op == syntax.OpCapture {
+		return expr.Sub, nil
+	}
+	return []*syntax.Regexp{expr}, nil
+}
+
 func (b *builder) terminalField(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	pattern := string(f.Tag)
+	pattern, err := b.extractTag(f.Tag)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %v", fullName, err)
+	}
 	if pattern == "" {
 		return nil, nil, nil
 	}
 
-	// TODO: check for sub-captures within expr and remove them
+	// Parse the pattern
 	expr, err := syntax.Parse(pattern, b.opts.SyntaxFlags)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`%s: %v (pattern was "%s")`, fullName, err, f.Tag)
+	}
+
+	// Remove capture nodes within the AST
+	expr, err = transform(expr, removeCaptures)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to remove captures from "%s": %v`, pattern, err)
+	}
+
+	// Determine the kind
+	t := f.Type
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	var role Role
+	switch t {
+	case emptyType:
+		role = EmptyRole
+	case stringType:
+		role = StringScalarRole
+	case byteSliceType:
+		role = ByteSliceScalarRole
+	case submatchType:
+		role = SubmatchScalarRole
 	}
 
 	captureIndex := -1
@@ -72,13 +131,40 @@ func (b *builder) terminalField(f reflect.StructField, fullName string) (*Field,
 	field := &Field{
 		index:   f.Index,
 		capture: captureIndex,
+		role:    role,
+	}
+
+	return field, expr, nil
+}
+
+func (b *builder) pos(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
+	if !isExported(f) {
+		return nil, nil, nil
+	}
+	captureIndex := b.nextCaptureIndex()
+	empty := &syntax.Regexp{
+		Op: syntax.OpEmptyMatch,
+	}
+	expr := &syntax.Regexp{
+		Op:   syntax.OpCapture,
+		Sub:  []*syntax.Regexp{empty},
+		Name: f.Name,
+		Cap:  captureIndex,
+	}
+	field := &Field{
+		index:   f.Index,
+		capture: captureIndex,
+		role:    PosRole,
 	}
 
 	return field, expr, nil
 }
 
 func (b *builder) nonterminalField(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	opstr := f.Tag
+	opstr, err := b.extractTag(f.Tag)
+	if err != nil {
+		return nil, nil, err
+	}
 	child, expr, err := b.build(f.Type)
 	if err != nil {
 		return nil, nil, err
@@ -110,16 +196,21 @@ func (b *builder) nonterminalField(f reflect.StructField, fullName string) (*Fie
 		index:   f.Index,
 		capture: captureIndex,
 		child:   child,
+		role:    SubstructRole,
 	}
 
 	return field, expr, nil
 }
 
 func (b *builder) field(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	if isScalar(f.Type) {
+	if isTerminal(f.Type) {
 		return b.terminalField(f, fullName)
+	} else if isNonterminal(f.Type) {
+		return b.nonterminalField(f, fullName)
+	} else if f.Type == posType {
+		return b.pos(f, fullName)
 	}
-	return b.nonterminalField(f, fullName)
+	return nil, nil, nil
 }
 
 func (b *builder) build(t reflect.Type) (interface{}, *syntax.Regexp, error) {
@@ -148,8 +239,10 @@ func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		exprs = append(exprs, expr)
-		fields = append(fields, field)
+		if field != nil {
+			exprs = append(exprs, expr)
+			fields = append(fields, field)
+		}
 	}
 
 	// Wrap in a concat

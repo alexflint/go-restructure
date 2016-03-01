@@ -5,30 +5,6 @@ import (
 	"reflect"
 )
 
-var (
-	emptyType     = reflect.TypeOf(struct{}{})
-	stringType    = reflect.TypeOf("")
-	byteArrayType = reflect.TypeOf([]byte{})
-	scalarTypes   = []reflect.Type{
-		emptyType,
-		stringType,
-		byteArrayType,
-	}
-)
-
-// determines whether t is a scalar type or a pointer to a scalar type
-func isScalar(t reflect.Type) bool {
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	for _, u := range scalarTypes {
-		if t == u {
-			return true
-		}
-	}
-	return false
-}
-
 // ensureAlloc replaces nil pointers with newly allocated objects
 func ensureAlloc(dest reflect.Value) reflect.Value {
 	if dest.Kind() == reflect.Ptr {
@@ -41,48 +17,88 @@ func ensureAlloc(dest reflect.Value) reflect.Value {
 }
 
 // inflate the results of a match into a string
-func inflateScalar(dest reflect.Value, match *match, captureIndex int) error {
+func inflateScalar(dest reflect.Value, match *match, captureIndex int, role Role) error {
 	if captureIndex == -1 {
 		// This means the field generated a regex but we did not want the results
 		return nil
 	}
-	region := match.captures[captureIndex]
-	if !region.wasMatched() {
-		// This means the region was optional and was not matched
+
+	// Get the subcapture for this field
+	subcapture := match.captures[captureIndex]
+	if !subcapture.wasMatched() {
+		// This means the subcapture was optional and was not matched
 		return nil
 	}
 
-	buf := match.input[region.begin:region.end]
+	// Get the matched bytes
+	buf := match.input[subcapture.begin:subcapture.end]
 
+	// If dest is a nil pointer then allocate a new instance and assign the pointer to dest
 	dest = ensureAlloc(dest)
-	switch dest.Type() {
-	case stringType:
+
+	// Deal with each recognized type
+	switch role {
+	case StringScalarRole:
 		dest.SetString(string(buf))
 		return nil
-	case byteArrayType:
+	case ByteSliceScalarRole:
 		dest.SetBytes(buf)
 		return nil
-	case emptyType:
-		// ignore the value
+	case SubmatchScalarRole:
+		submatch := dest.Addr().Interface().(*Submatch)
+		submatch.Begin = Pos(subcapture.begin)
+		submatch.End = Pos(subcapture.end)
+		submatch.Bytes = buf
 		return nil
 	}
 	return fmt.Errorf("unable to capture into %s", dest.Type().String())
 }
 
-// inflate the results of a match into a struct
-func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
-	if !match.captures[structure.capture].wasMatched() {
+// inflate the position of a match into a Pos
+func inflatePos(dest reflect.Value, match *match, captureIndex int) error {
+	if captureIndex == -1 {
+		// This means the field generated a regex but we did not want the results
 		return nil
 	}
 
+	// Get the subcapture for this field
+	subcapture := match.captures[captureIndex]
+	if !subcapture.wasMatched() {
+		// This means the subcapture was optional and was not matched
+		return nil
+	}
+
+	// If dest is a nil pointer then allocate a new instance and assign the pointer to dest
+	dest.SetInt(int64(subcapture.begin))
+	return nil
+}
+
+// inflate the results of a match into a struct
+func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
+	// Get the subcapture for this field
+	subcapture := match.captures[structure.capture]
+	if !subcapture.wasMatched() {
+		return nil
+	}
+
+	// If the field is a nil pointer then allocate an instance and assign pointer to dest
 	dest = ensureAlloc(dest)
+
+	// Inflate values into the struct fields
 	for _, field := range structure.fields {
-		val := dest.FieldByIndex(field.index)
-		if isScalar(val.Type()) {
-			if err := inflateScalar(val, match, field.capture); err != nil {
+		switch field.role {
+		case PosRole:
+			val := dest.FieldByIndex(field.index)
+			if err := inflatePos(val, match, field.capture); err != nil {
 				return err
 			}
-		} else if field.child != nil {
+		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole:
+			val := dest.FieldByIndex(field.index)
+			if err := inflateScalar(val, match, field.capture, field.role); err != nil {
+				return err
+			}
+		case SubstructRole:
+			val := dest.FieldByIndex(field.index)
 			if err := inflate(val, match, field.child); err != nil {
 				return err
 			}
