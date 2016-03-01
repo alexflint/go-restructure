@@ -143,7 +143,7 @@ func (r *Regexp) FindAll(dest interface{}, s string, limit int) {
 		match := matchFromIndices(indices, input)
 
 		// Inflate the match into the dest item
-		err := inflateStruct(destItem, match, r.st)
+		err := inflate(destItem, match, r.class)
 		if err != nil {
 			panic(err)
 		}

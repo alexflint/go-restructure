@@ -162,6 +162,76 @@ When an optional sub-struct is not matched, it will be set to nil:
 }
 ```
 
+### OR expressions (also known as alternation, disjunction)
+
+There are two ways to specify alternative regular expressions. If simply want the results as
+a string then you can use an ordinary `|` in a struct tag:
+
+```go
+type Alternatives struct {
+	X string `Pluto (is)|(was) a planet`
+}
+```
+
+The second approach is to define the two alternatives as structs and register a union:
+
+```go
+
+// PhoneNumber matches "123-456-7890"
+type PhoneNumber struct {
+	Area   string   `\d{3}`
+	_      struct{} `-`
+	Group  string   `\d{3}`
+	_      struct{} `-`
+	Digits string   `\d{4}`
+}
+
+// EmailAddress matches "greg@example.com"
+type EmailAddress struct {
+	User string   `\w+`
+	_    struct{} `@`
+	Host string   `.+`
+}
+
+// ContactInfo matches a PhoneNumber or an Email Address
+type ContactInfo interface{}
+
+// ContactLine matches "please contact 123-456-7890" or "please contact greg@example.com"
+type ContactLine struct {
+	_       struct{} `please contact `
+	Contact ContactInfo
+}
+
+func main() {
+	var contact ContactInfo
+	restructure.RegisterUnion(&contact, EmailAddress{}, PhoneNumber{})
+
+	pattern := restructure.MustCompile(ContactLine{}, restructure.Options{})
+
+	var line ContactLine
+	pattern.Find(&line, "please contact greg@example.com")
+	pretty.Println(line)
+
+	pattern.Find(&line, "please contact 123-456-7890")
+	pretty.Println(line)
+}
+```
+```
+main.ContactLine{
+    Contact: &main.EmailAddress{
+        User: "greg",
+        Host: "example.com",
+    },
+}
+main.ContactLine{
+    Contact: &main.PhoneNumber{
+        Area:   "123",
+        Group:  "456",
+        Digits: "7890",
+    },
+}
+```
+
 ### Finding multiple matches
 
 The following example uses `Regexp.FindAll` to extract all floating point numbers from
