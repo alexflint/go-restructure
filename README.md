@@ -1,5 +1,11 @@
-[![GoDoc](https://godoc.org/github.com/alexflint/go-restructure?status.svg)](https://godoc.org/github.com/alexflint/go-restructure)
-[![Build Status](https://travis-ci.org/alexflint/go-restructure.svg?branch=master)](https://travis-ci.org/alexflint/go-restructure)
+<h4 align="center">Struct-based argument parsing for Go</h4>
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/alexflint/go-restructure"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square" alt="Documentation"></a>
+  <a href="https://github.com/alexflint/go-restructure/actions"><img src="https://github.com/alexflint/go-restructure/workflows/Go/badge.svg" alt="Build Status"></a>
+  <a href="https://codecov.io/gh/alexflint/go-restructure"><img src="https://codecov.io/gh/alexflint/go-restructure/branch/master/graph/badge.svg" alt="Coverage Status"></a>
+  <a href="https://goreportcard.com/report/github.com/alexflint/go-restructure"><img src="https://goreportcard.com/badge/github.com/alexflint/go-restructure" alt="Go Report Card"></a>
+</p>
+<br>
 
 ## Match regular expressions into struct fields
 
