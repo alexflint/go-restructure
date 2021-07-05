@@ -292,7 +292,7 @@ func TestFindAllWords_ByValueSlicePanics(t *testing.T) {
 	pattern := MustCompile(Word{}, Options{})
 	var words []*Word
 	// This should panic because words is passed by value not by pointer:
-	assert.Panics(t, func() { pattern.FindAll(words, "*&!", -1) })
+	assert.Panics(t, func() { pattern.FindAll(words, "abc", -1) })
 }
 
 type WordSubmatch struct {
