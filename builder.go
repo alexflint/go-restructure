@@ -26,11 +26,17 @@ type Struct struct {
 	fields  []*Field
 }
 
+// A Union describes how to inflate a match into a registered union type
+type Union struct {
+	class     *unionType
+	disjuncts []*Struct
+}
+
 // A Field describes how to inflate a match into a field
 type Field struct {
-	capture int     // index of the capture for this field
-	index   []int   // index of this field within its parent struct
-	child   *Struct // descendant struct; nil for terminals
+	capture int         // index of the capture for this field
+	index   []int       // index of this field within its parent struct
+	child   interface{} // descendant struct or union; nil for terminals
 	role    Role
 }
 
@@ -74,7 +80,7 @@ func removeCaptures(expr *syntax.Regexp) ([]*syntax.Regexp, error) {
 	return []*syntax.Regexp{expr}, nil
 }
 
-func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
+func (b *builder) terminalField(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
 	pattern, err := b.extractTag(f.Tag)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %v", fullName, err)
@@ -154,12 +160,12 @@ func (b *builder) pos(f reflect.StructField, fullName string) (*Field, *syntax.R
 	return field, expr, nil
 }
 
-func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
+func (b *builder) nonterminalField(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
 	opstr, err := b.extractTag(f.Tag)
 	if err != nil {
 		return nil, nil, err
 	}
-	child, expr, err := b.structure(f.Type)
+	child, expr, err := b.build(f.Type)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -197,21 +203,31 @@ func (b *builder) nonterminal(f reflect.StructField, fullName string) (*Field, *
 }
 
 func (b *builder) field(f reflect.StructField, fullName string) (*Field, *syntax.Regexp, error) {
-	if isScalar(f.Type) {
-		return b.terminal(f, fullName)
-	} else if isStruct(f.Type) {
-		return b.nonterminal(f, fullName)
+	if isTerminal(f.Type) {
+		return b.terminalField(f, fullName)
+	} else if isNonterminal(f.Type) {
+		return b.nonterminalField(f, fullName)
 	} else if f.Type == posType {
 		return b.pos(f, fullName)
 	}
 	return nil, nil, nil
 }
 
-func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
+func (b *builder) build(t reflect.Type) (interface{}, *syntax.Regexp, error) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+	switch t.Kind() {
+	case reflect.Struct:
+		return b.structure(t)
+	case reflect.Interface:
+		return b.iface(t)
+	default:
+		return nil, nil, fmt.Errorf("unable to build regexp for %v", t)
+	}
+}
 
+func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
 	// Select a capture index first so that the struct comes before its fields
 	captureIndex := b.nextCaptureIndex()
 
@@ -248,4 +264,35 @@ func (b *builder) structure(t reflect.Type) (*Struct, *syntax.Regexp, error) {
 	}
 
 	return st, expr, nil
+}
+
+func (b *builder) iface(t reflect.Type) (*Union, *syntax.Regexp, error) {
+	unionType, found := unions[t]
+	if !found {
+		return nil, nil, fmt.Errorf("interface types can only be used when registered with RegisterUnion")
+	}
+
+	var structs []*Struct
+	var exprs []*syntax.Regexp
+	for _, structType := range unionType.structs {
+		st, expr, err := b.structure(structType)
+		if err != nil {
+			return nil, nil, err
+		}
+		structs = append(structs, st)
+		exprs = append(exprs, expr)
+	}
+
+	// Wrap in a disjunction
+	expr := &syntax.Regexp{
+		Sub: exprs,
+		Op:  syntax.OpAlternate,
+	}
+
+	union := &Union{
+		class:     unionType,
+		disjuncts: structs,
+	}
+
+	return union, expr, nil
 }
