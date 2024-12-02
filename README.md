@@ -1,4 +1,4 @@
-<h4 align="center">Struct-based argument parsing for Go</h4>
+<h4 align="center">Struct-based regular expressions for Go</h4>
 <p align="center">
   <a href="https://pkg.go.dev/github.com/alexflint/go-restructure"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square" alt="Documentation"></a>
   <a href="https://github.com/alexflint/go-restructure/actions"><img src="https://github.com/alexflint/go-restructure/workflows/Go/badge.svg" alt="Build Status"></a>
