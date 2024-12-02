@@ -1,37 +1,33 @@
 name: Go
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push]
 
 jobs:
 
-  build_and_test:
-    name: Build and test
+  test:
+    name: Test
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.13', '1.14', '1.15', '1.16']
+        go: ['1.22', '1.23', 'stable']
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - id: go
-      name: Set up Go
-      uses: actions/setup-go@v1
+      name: Setup
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go }}
 
-    - name: Checkout
-      uses: actions/checkout@v2
-
     - name: Build
       run: go build -v .
-    
+
     - name: Test
       run: go test -v -coverprofile=profile.cov .
 
-    - name: Send coverage
+    - name: Coverage
       run: bash <(curl -s https://codecov.io/bash) -f profile.cov
