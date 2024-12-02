@@ -3,6 +3,7 @@ package restructure
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 var (
@@ -10,11 +11,13 @@ var (
 
 	emptyType     = reflect.TypeOf(struct{}{})
 	stringType    = reflect.TypeOf("")
+	intType       = reflect.TypeOf(1)
 	byteSliceType = reflect.TypeOf([]byte{})
 	submatchType  = reflect.TypeOf(Submatch{})
 	scalarTypes   = []reflect.Type{
 		emptyType,
 		stringType,
+		intType,
 		byteSliceType,
 		submatchType,
 	}
@@ -77,6 +80,13 @@ func inflateScalar(dest reflect.Value, match *match, captureIndex int, role Role
 	case StringScalarRole:
 		dest.SetString(string(buf))
 		return nil
+	case IntScalarRole:
+		if intVal, err := strconv.Atoi(string(buf)); err != nil {
+			return fmt.Errorf("unable to capture into %s", dest.Type().String())
+		} else {
+			dest.SetInt(int64(intVal))
+			return nil
+		}
 	case ByteSliceScalarRole:
 		dest.SetBytes(buf)
 		return nil
@@ -128,7 +138,7 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 			if err := inflatePos(val, match, field.capture); err != nil {
 				return err
 			}
-		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole:
+		case StringScalarRole, ByteSliceScalarRole, SubmatchScalarRole, IntScalarRole:
 			val := dest.FieldByIndex(field.index)
 			if err := inflateScalar(val, match, field.capture, field.role); err != nil {
 				return err

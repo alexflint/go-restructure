@@ -118,6 +118,19 @@ func main() {
 }
 ```
 
+### Ints
+
+It is also possible to set struct fields as `int` to get the string automatically converted.
+
+```go
+// Matches "12 wombats", "1 wombat" and store the number as int
+type Wisdom struct {
+	Number   int       `^\d+`
+	_   	 string    `\s+`
+	Animal   string    `\w+`
+}
+```
+
 ### Optional fields
 
 When nesting one struct within another, you can make the nested struct optional by marking it with `?`. The following example parses floating point numbers with optional sign and exponent:
