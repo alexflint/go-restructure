@@ -16,6 +16,7 @@ const (
 	PosRole
 	SubstructRole
 	StringScalarRole
+	IntScalarRole
 	ByteSliceScalarRole
 	SubmatchScalarRole
 )
@@ -106,6 +107,8 @@ func (b *builder) terminal(f reflect.StructField, fullName string) (*Field, *syn
 		role = EmptyRole
 	case stringType:
 		role = StringScalarRole
+	case intType:
+		role = IntScalarRole
 	case byteSliceType:
 		role = ByteSliceScalarRole
 	case submatchType:

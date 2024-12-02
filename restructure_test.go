@@ -308,3 +308,19 @@ func TestFindAllWords_Regions(t *testing.T) {
 	assertRegion(t, "is", 4, 6, words[1].S)
 	assertRegion(t, "spam", 7, 11, words[2].S)
 }
+
+type ExprWithInt struct {
+	Number int    `regexp:"^\\d+"`
+	_      string `regexp:"\\s+"`
+	Animal string `regexp:"\\w+$"`
+}
+
+func TestMatchWithInt(t *testing.T) {
+	pattern, err := Compile(ExprWithInt{}, Options{})
+	require.NoError(t, err)
+
+	var v ExprWithInt
+	assert.True(t, pattern.Find(&v, "4 wombats"))
+	assert.Equal(t, 4, v.Number)
+	assert.Equal(t, "wombats", v.Animal)
+}
