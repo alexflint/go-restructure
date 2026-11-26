@@ -124,6 +124,9 @@ func inflateStruct(dest reflect.Value, match *match, structure *Struct) error {
 	// Get the subcapture for this field
 	subcapture := match.captures[structure.capture]
 	if !subcapture.wasMatched() {
+		if dest.Kind() == reflect.Ptr && dest.CanSet() {
+			dest.Set(reflect.Zero(dest.Type()))
+		}
 		return nil
 	}
 

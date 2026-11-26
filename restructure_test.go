@@ -324,3 +324,57 @@ func TestMatchWithInt(t *testing.T) {
 	assert.Equal(t, 4, v.Number)
 	assert.Equal(t, "wombats", v.Animal)
 }
+
+func TestMatchNameDotNameReusedDestination(t *testing.T) {
+	pattern := MustCompile(DotExpr{}, Options{})
+	var v DotExpr
+	require.True(t, pattern.Find(&v, "foo.bar"))
+	previousTail := v.Tail
+	require.NotNil(t, previousTail)
+
+	require.False(t, pattern.Find(&v, ".oops"))
+	assert.Equal(t, "foo", v.Head)
+	assert.Same(t, previousTail, v.Tail)
+
+	require.True(t, pattern.Find(&v, "head"))
+	assert.Equal(t, "head", v.Head)
+	require.Nil(t, v.Tail)
+	assert.Equal(t, "bar", previousTail.Name)
+
+	require.True(t, pattern.Find(&v, "next.tail"))
+	assert.Equal(t, "next", v.Head)
+	require.NotNil(t, v.Tail)
+	assert.Equal(t, "tail", v.Tail.Name)
+	assert.Equal(t, "bar", previousTail.Name)
+}
+
+func TestMatchOptionalStructInsideValueReusedDestination(t *testing.T) {
+	type Wrapped struct {
+		Value DotExpr
+	}
+	pattern := MustCompile(Wrapped{}, Options{})
+	var v Wrapped
+	require.True(t, pattern.Find(&v, "foo.bar"))
+	require.NotNil(t, v.Value.Tail)
+
+	require.True(t, pattern.Find(&v, "head"))
+	assert.Equal(t, "head", v.Value.Head)
+	assert.Nil(t, v.Value.Tail)
+}
+
+func TestMatchUnexportedOptionalStructAbsent(t *testing.T) {
+	type WithUnexported struct {
+		_    struct{} `regexp:"^"`
+		Head string   `regexp:"\\w+"`
+		tail *DotName `regexp:"?"`
+		_    struct{} `regexp:"$"`
+	}
+	pattern := MustCompile(WithUnexported{}, Options{})
+	tail := &DotName{Dot: ".", Name: "retained"}
+	v := WithUnexported{tail: tail}
+
+	require.True(t, pattern.Find(&v, "head"))
+	assert.Equal(t, "head", v.Head)
+	assert.Same(t, tail, v.tail)
+	assert.Equal(t, "retained", tail.Name)
+}
